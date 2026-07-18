@@ -19,7 +19,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /setInterval/);
   assert.match(page, /aggregateCsv/);
   assert.deepEqual(JSON.parse(config), { url: "", format: "json" });
-  assert.match(workflow, /actions\/deploy-pages@v4/);
+  assert.match(workflow, /actions\/configure-pages@v6/);
+  assert.match(workflow, /actions\/upload-pages-artifact@v5/);
+  assert.match(workflow, /actions\/deploy-pages@v5/);
   assert.match(appsScript, /function doGet\(event\)/);
   assert.match(appsScript, /event\.parameter\.format === "csv"/);
   assert.match(appsScript, /aggregate counts only/);
