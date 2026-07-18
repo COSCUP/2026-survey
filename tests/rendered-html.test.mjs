@@ -7,13 +7,14 @@ import vm from "node:vm";
 const root = new URL("../", import.meta.url);
 
 test("GitHub Pages build contains the live data-source workflow", async () => {
-  const [html, page, i18n, config, workflow, appsScript] = await Promise.all([
+  const [html, page, i18n, config, workflow, appsScript, readme] = await Promise.all([
     readFile(new URL("dist/index.html", root), "utf8"),
     readFile(new URL("app/page.tsx", root), "utf8"),
     readFile(new URL("lib/i18n.ts", root), "utf8"),
     readFile(new URL("dist/data-source.json", root), "utf8"),
     readFile(new URL(".github/workflows/pages.yml", root), "utf8"),
     readFile(new URL("google-apps-script/Code.gs", root), "utf8"),
+    readFile(new URL("README.md", root), "utf8"),
   ]);
 
   assert.match(html, /COSCUP/);
@@ -34,16 +35,22 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.equal(dataSource.format, "json");
   assert.match(dataSource.url, /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/);
   assert.match(page, /isPublicAggregateSafe/);
+  assert.match(page, /view=raw&format=/);
   assert.match(workflow, /actions\/configure-pages@v6/);
   assert.match(workflow, /actions\/upload-pages-artifact@v5/);
   assert.match(workflow, /actions\/deploy-pages@v5/);
   assert.match(appsScript, /function doGet\(event\)/);
-  assert.match(appsScript, /event\.parameter\.format === "csv"/);
-  assert.match(appsScript, /aggregate counts only/);
+  assert.match(appsScript, /parameters\.format === "csv"/);
+  assert.match(appsScript, /default endpoint returns aggregate counts/);
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
   assert.match(appsScript, /assertPublicAggregate_/);
   assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v2"/);
+  assert.match(appsScript, /function buildPublicRows_/);
+  assert.match(appsScript, /function importLatestKktixCsv/);
+  assert.match(appsScript, /function installKktixImportTrigger/);
+  assert.match(readme, /每 15 分鐘/);
+  assert.match(readme, /view=raw&format=csv/);
   assert.doesNotMatch(page, /填答率/);
 });
 
@@ -132,5 +139,17 @@ test("Apps Script supports the latest field keys and option labels", async () =>
   assert.deepEqual(
     structuredClone(vm.runInContext("countSelections_(rows, 2)", context)),
     [{ label: "影音製作與串流軟體", value: 1 }],
+  );
+
+  context.publicValues = [
+    ["姓名", "Email", "付款時間", "公開回答"],
+    ["Example Person", "person@example.com", "2026/07/17 20:00:09", "聯絡 person@example.com"],
+  ];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("buildPublicRows_(publicValues)", context)),
+    {
+      headers: ["付款時間", "公開回答"],
+      rows: [["2026/07/17 20:00:09", "聯絡 [REDACTED]"]],
+    },
   );
 });

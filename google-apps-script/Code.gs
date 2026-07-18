@@ -6,11 +6,25 @@
  * 3. Deploy as a Web app: Execute as Me; access Anyone.
  * 4. Paste the /exec URL into public/data-source.json.
  *
- * The endpoint returns aggregate counts only. It never returns individual rows.
+ * The default endpoint returns aggregate counts. `?view=raw` returns
+ * de-identified row-level survey data with explicit personal fields removed.
  * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
 const SCHEMA_VERSION = "2026-07-19-v2";
+
+// KKTIX CSV automation. Fill these two values before installing the trigger.
+// Save each full KKTIX export into the Drive folder. The newest CSV replaces
+// SHEET_NAME, preventing duplicate rows when exports contain the full snapshot.
+const TARGET_SPREADSHEET_ID = "PASTE_GOOGLE_SHEET_ID_HERE";
+const KKTIX_IMPORT_FOLDER_ID = "PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE";
+const IMPORT_HANDLER = "importLatestKktixCsv";
+const LAST_IMPORTED_FILE_KEY = "coscup_latest_kktix_file_id";
+
+const PUBLIC_EXCLUDED_HEADER_KEYWORDS = [
+  "姓名", "email", "e-mail", "電子郵件", "身分證", "手機", "聯絡電話",
+  "電話", "郵遞區號", "地址", "address", "phone", "mobile",
+];
 
 const COLUMN_HINTS = {
   payment: ["付款時間"],
@@ -87,18 +101,150 @@ const LABEL_RULES = [
 
 function doGet(event) {
   try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const spreadsheet = getSourceSpreadsheet_();
     const sheet = spreadsheet.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error(`找不到工作表：${SHEET_NAME}`);
-    const data = aggregateSheet_(sheet.getDataRange().getDisplayValues(), spreadsheet.getName(), sheet.getName());
+    const values = sheet.getDataRange().getDisplayValues();
+    const parameters = (event && event.parameter) || {};
+    if (parameters.view === "raw") {
+      const publicRows = buildPublicRows_(values);
+      if (parameters.format === "csv") {
+        return ContentService.createTextOutput(toPublicCsv_(publicRows)).setMimeType(ContentService.MimeType.CSV);
+      }
+      return ContentService.createTextOutput(JSON.stringify(toPublicRecords_(publicRows))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const data = aggregateSheet_(values, spreadsheet.getName(), sheet.getName());
     assertPublicAggregate_(data);
-    if (event && event.parameter && event.parameter.format === "csv") {
+    if (parameters.format === "csv") {
       return ContentService.createTextOutput(toCsv_(data)).setMimeType(ContentService.MimeType.CSV);
     }
     return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ error: String(error.message || error) })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function getSourceSpreadsheet_() {
+  if (TARGET_SPREADSHEET_ID && !TARGET_SPREADSHEET_ID.includes("PASTE_")) {
+    return SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+  }
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) throw new Error("請設定 TARGET_SPREADSHEET_ID，或將程式綁定到目標 Google Sheet。");
+  return spreadsheet;
+}
+
+function buildPublicRows_(values) {
+  if (!values.length) throw new Error("工作表沒有標題列。");
+  const headers = values[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
+  const includedIndexes = headers.map((header, index) => ({ header, index }))
+    .filter((item) => item.header && !isExcludedPublicHeader_(item.header));
+  if (!includedIndexes.length) throw new Error("沒有可公開的非個資欄位。");
+
+  const publicHeaders = includedIndexes.map((item) => item.header);
+  const rows = values.slice(1)
+    .filter((row) => row.some((cell) => String(cell).trim() !== ""))
+    .map((row) => includedIndexes.map((item) => redactPublicValue_(row[item.index])));
+  return { headers: publicHeaders, rows };
+}
+
+function isExcludedPublicHeader_(header) {
+  const normalized = String(header).trim().toLowerCase();
+  if (normalized === "name") return true;
+  return PUBLIC_EXCLUDED_HEADER_KEYWORDS.some((keyword) => normalized.includes(keyword.toLowerCase()));
+}
+
+function redactPublicValue_(value) {
+  return String(value || "")
+    .replace(/\b[A-Z][12]\d{8}\b/gi, "[REDACTED]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED]")
+    .replace(/(?:\+?886[-\s]?)?09\d{2}[-\s]?\d{3}[-\s]?\d{3}\b/g, "[REDACTED]");
+}
+
+function toPublicRecords_(publicRows) {
+  return publicRows.rows.map((row) => Object.fromEntries(publicRows.headers.map((header, index) => [header, row[index]])));
+}
+
+function toPublicCsv_(publicRows) {
+  return [publicRows.headers].concat(publicRows.rows)
+    .map((row) => row.map(publicCsvCell_).join(","))
+    .join("\n");
+}
+
+function publicCsvCell_(value) {
+  let text = String(value || "");
+  if (/^[=+@]/.test(text)) text = `'${text}`;
+  return csvCell_(text);
+}
+
+function importLatestKktixCsv() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("另一個 KKTIX 匯入作業仍在執行，請稍後再試。");
+  try {
+    return importLatestKktixCsv_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function importLatestKktixCsv_() {
+  assertImportConfiguration_();
+  const spreadsheet = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+  const folder = DriveApp.getFolderById(KKTIX_IMPORT_FOLDER_ID);
+  const files = folder.getFiles();
+  let latestFile = null;
+  while (files.hasNext()) {
+    const file = files.next();
+    if (!/\.csv$/i.test(file.getName())) continue;
+    if (!latestFile || file.getLastUpdated().getTime() > latestFile.getLastUpdated().getTime()) latestFile = file;
+  }
+  if (!latestFile) throw new Error("匯入資料夾內找不到 CSV 檔案。");
+
+  const properties = PropertiesService.getScriptProperties();
+  const fileSignature = [latestFile.getId(), latestFile.getLastUpdated().getTime(), latestFile.getSize()].join(":");
+  if (properties.getProperty(LAST_IMPORTED_FILE_KEY) === fileSignature) {
+    return { status: "unchanged", fileName: latestFile.getName() };
+  }
+
+  const text = latestFile.getBlob().getDataAsString("UTF-8").replace(/^\uFEFF/, "");
+  const values = Utilities.parseCsv(text);
+  if (values.length < 2 || values[0].length < 2) throw new Error("CSV 沒有有效的標題列或資料列。");
+  assertKktixImportHeaders_(values[0]);
+  const width = Math.max(...values.map((row) => row.length));
+  const normalizedValues = values.map((row) => row.concat(Array(width - row.length).fill("")));
+
+  let sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
+  sheet.clearContents();
+  sheet.getRange(1, 1, normalizedValues.length, width).setValues(normalizedValues);
+  sheet.setFrozenRows(1);
+  SpreadsheetApp.flush();
+  properties.setProperty(LAST_IMPORTED_FILE_KEY, fileSignature);
+  properties.setProperty(`${LAST_IMPORTED_FILE_KEY}_name`, latestFile.getName());
+  properties.setProperty(`${LAST_IMPORTED_FILE_KEY}_time`, new Date().toISOString());
+  return { status: "imported", fileName: latestFile.getName(), rows: normalizedValues.length - 1 };
+}
+
+function installKktixImportTrigger() {
+  assertImportConfiguration_();
+  ScriptApp.getProjectTriggers()
+    .filter((trigger) => trigger.getHandlerFunction() === IMPORT_HANDLER)
+    .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
+  ScriptApp.newTrigger(IMPORT_HANDLER).timeBased().everyMinutes(15).create();
+  return "已建立每 15 分鐘檢查一次的 KKTIX CSV 匯入觸發器。";
+}
+
+function assertImportConfiguration_() {
+  if (!TARGET_SPREADSHEET_ID || TARGET_SPREADSHEET_ID.includes("PASTE_")) {
+    throw new Error("請先設定 TARGET_SPREADSHEET_ID。");
+  }
+  if (!KKTIX_IMPORT_FOLDER_ID || KKTIX_IMPORT_FOLDER_ID.includes("PASTE_")) {
+    throw new Error("請先設定 KKTIX_IMPORT_FOLDER_ID。");
+  }
+}
+
+function assertKktixImportHeaders_(headers) {
+  [COLUMN_HINTS.payment, COLUMN_HINTS.age, COLUMN_HINTS.roles].forEach((hints) => findColumn_(headers, hints));
 }
 
 function assertPublicAggregate_(data) {

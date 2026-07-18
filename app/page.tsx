@@ -270,7 +270,7 @@ export default function Home() {
   const endpoint = (format: "json" | "csv") => {
     if (!dataSourceUrl) return "";
     const separator = dataSourceUrl.includes("?") ? "&" : "?";
-    return `${dataSourceUrl}${separator}format=${format}`;
+    return `${dataSourceUrl}${separator}view=raw&format=${format}`;
   };
 
   return (

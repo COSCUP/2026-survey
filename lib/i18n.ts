@@ -146,17 +146,17 @@ const zhHant = {
   openData: {
     eyebrow: "05 · OPEN DATA",
     title: "把數據帶走，\n做出你的觀察。",
-    description: "我們提供與本頁一致的彙總統計，歡迎社群下載、介接與延伸分析。開放資料不包含逐筆回覆或可識別個人的資料。",
-    jsonTitle: "介接用 API",
-    jsonDescription: "適合程式、視覺化與自動分析流程。",
+    description: "提供 KKTIX 逐筆原始報名資料，僅移除姓名與 Email 兩個個資欄位，歡迎社群下載、介接與延伸分析。",
+    jsonTitle: "逐筆 JSON",
+    jsonDescription: "每筆報名為一個物件，保留原始問卷欄位。",
     jsonAction: "開啟 JSON ↗",
-    csvTitle: "表格與分析工具",
-    csvDescription: "將各圖表統計整理為長表，可直接匯入。",
+    csvTitle: "原始 CSV",
+    csvDescription: "去除姓名與 Email，可直接匯入試算表或分析工具。",
     csvAction: "下載 CSV ↗",
     pending: "等待設定資料網址",
     latest: "最新資料：{time}",
     format: "格式：UTF-8 · JSON / CSV",
-    granularity: "粒度：彙總統計",
+    granularity: "粒度：去除姓名與 Email 的逐筆資料",
   },
   footer: {
     source: "資料來源：活動預先報名資料，統計截止 {time}。複選題以人次計算。",
@@ -184,7 +184,7 @@ const en: Copy = {
   ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI is now part of work and everyday life", description: "Claude leads at work, while ChatGPT, Gemini, and Claude form the main everyday mix.", workKicker: "Used at work", workTop: "{tool} ranks first", workUnit: "work AI tools", dailyKicker: "Used in daily life", dailyTop: "{tool} has the most selections", dailyUnit: "daily AI tools", outlookKicker: "Will AI kill open source, or open a new chapter?", outlookTitle: "Most responses point to coexistence and greater importance", outlookDescription: "Rather than a zero-sum rivalry, participants more often see AI and open source as forces that can move each other forward." },
   agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "What do people want to take away?", description: "Connection, technology, and international insight are the leading expectations. Session interests span main sessions, systems, AI governance, and localization.", trackKicker: "Session interest ranking", trackTitle: "Main sessions lead, followed by diverse communities", trackUnit: "session tracks", motivationKicker: "What participants expect", motivationTitle: "People and knowledge both take center stage" },
   newsletter: { title: "Stay connected after the event?", description: "Newsletter preferences show clear demand for long-term content and community connections beyond the event.", coscup: "COSCUP newsletter", ocf: "OCF newsletter", subscribe: "Subscribe", already: "Already subscribed", eventOnly: "Event updates only", none: "Do not subscribe" },
-  openData: { eyebrow: "05 · OPEN DATA", title: "Take the data.\nBuild your own view.", description: "We provide the same aggregate statistics used on this page for download, integration, and further analysis. The open data contains no individual responses or personally identifiable information.", jsonTitle: "API integration", jsonDescription: "For code, visualizations, and automated analysis.", jsonAction: "Open JSON ↗", csvTitle: "Tables and analysis tools", csvDescription: "Long-form chart statistics ready to import.", csvAction: "Download CSV ↗", pending: "Data URL not configured", latest: "Latest data: {time}", format: "Format: UTF-8 · JSON / CSV", granularity: "Granularity: aggregate statistics" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "Take the data.\nBuild your own view.", description: "We provide row-level KKTIX registration data with only the Name and Email fields removed, ready for community download, integration, and further analysis.", jsonTitle: "Row-level JSON", jsonDescription: "One object per registration with the original survey fields preserved.", jsonAction: "Open JSON ↗", csvTitle: "Raw CSV", csvDescription: "Name and Email removed; ready for spreadsheets and analysis tools.", csvAction: "Download CSV ↗", pending: "Data URL not configured", latest: "Latest data: {time}", format: "Format: UTF-8 · JSON / CSV", granularity: "Grain: row-level data without Name and Email" },
   footer: { source: "Source: preregistration data, updated {time}. Multiple-choice questions count selections.", top: "Back to top ↑" },
 };
 
@@ -205,7 +205,7 @@ const ja: Copy = {
   ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI は仕事と日常の一部に", description: "仕事では Claude が首位。日常では ChatGPT、Gemini、Claude が中心です。", workKicker: "仕事で利用", workTop: "{tool} が首位", workUnit: "種類の仕事用 AI", dailyKicker: "日常で利用", dailyTop: "{tool} の選択数が最多い", dailyUnit: "種類の日常用 AI", outlookKicker: "AI はオープンソースを終わらせるのか、新しい章を開くのか？", outlookTitle: "多くの声は「共生」と「より重要」へ", outlookDescription: "参加者は、AI とオープンソースをゼロサム競争ではなく、互いを前進させる力と見ています。" },
   agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "会場から何を持ち帰りたい？", description: "交流、技術、海外の最新知識が主な期待です。関心はメインセッションからシステム、AI ガバナンス、ローカライズまで広がります。", trackKicker: "セッション関心ランキング", trackTitle: "メインセッションに続く多様なコミュニティ", trackUnit: "セッショントラック", motivationKicker: "参加への期待", motivationTitle: "人と知識、どちらも会場の主役" },
   newsletter: { title: "イベント後もつながりますか？", description: "ニュースレターの希望から、イベント以外の継続的なコンテンツとコミュニティとのつながりへの明確な需要が見えます。", coscup: "COSCUP ニュースレター", ocf: "OCF ニュースレター", subscribe: "購読希望", already: "購読済み", eventOnly: "イベント通知のみ", none: "購読しない" },
-  openData: { eyebrow: "05 · OPEN DATA", title: "データを持ち帰り、\nあなたの視点を。", description: "このページと同じ集計データを、ダウンロード、連携、追加分析のために公開しています。個別の回答や個人を特定できる情報は含みません。", jsonTitle: "API 連携", jsonDescription: "プログラム、可視化、自動分析向け。", jsonAction: "JSON を開く ↗", csvTitle: "表と分析ツール", csvDescription: "各チャートの集計をロング形式で取り込めます。", csvAction: "CSV をダウンロード ↗", pending: "データ URL が未設定です", latest: "最新データ：{time}", format: "形式：UTF-8 · JSON / CSV", granularity: "粒度：集計統計" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "データを持ち帰り、\nあなたの視点を。", description: "KKTIX の登録データを行単位で公開します。氏名と Email の 2 項目のみを除き、ダウンロード、連携、追加分析に利用できます。", jsonTitle: "行単位 JSON", jsonDescription: "1 登録につき 1 オブジェクトで、元のアンケート項目を保持します。", jsonAction: "JSON を開く ↗", csvTitle: "元データ CSV", csvDescription: "氏名と Email を除き、表計算・分析ツールへ直接取り込めます。", csvAction: "CSV をダウンロード ↗", pending: "データ URL が未設定です", latest: "最新データ：{time}", format: "形式：UTF-8 · JSON / CSV", granularity: "粒度：氏名・Email を除いた行単位データ" },
   footer: { source: "出典：事前登録データ、{time} 時点。複数選択は選択数で集計。", top: "ページ上部へ ↑" },
 };
 
@@ -226,7 +226,7 @@ const ko: Copy = {
   ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI는 업무와 일상의 일부", description: "업무에서는 Claude가 1위이며, 일상에서는 ChatGPT, Gemini, Claude가 주요 조합입니다.", workKicker: "업무에서 사용", workTop: "{tool} 1위", workUnit: "가지 업무용 AI", dailyKicker: "일상에서 사용", dailyTop: "{tool} 선택 횟수 1위", dailyUnit: "가지 일상용 AI", outlookKicker: "AI는 오픈소스를 끝낼까, 새 장을 열까?", outlookTitle: "대부분은 공존과 더 큰 중요성을 지향", outlookDescription: "참가자들은 AI와 오픈소스를 제로섬 경쟁보다 서로를 전진시키는 힘으로 보는 경우가 더 많습니다." },
   agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "행사에서 무엇을 얻어가고 싶을까?", description: "교류, 기술, 국제 정보가 가장 큰 기대입니다. 세션 관심은 메인 세션에서 시스템, AI 거버넌스, 현지화까지 확장됩니다.", trackKicker: "세션 관심도 순위", trackTitle: "메인 세션 다음으로 다양한 커뮤니티", trackUnit: "개 세션 트랙", motivationKicker: "참가 기대", motivationTitle: "사람과 지식 모두 행사의 주인공" },
   newsletter: { title: "행사 후에도 연결을 이어갈까요?", description: "뉴스레터 선호는 행사 밖에서도 장기 콘텐츠와 커뮤니티 연결에 대한 명확한 수요를 보여줍니다.", coscup: "COSCUP 뉴스레터", ocf: "OCF 뉴스레터", subscribe: "구독 희망", already: "구독 중", eventOnly: "행사 알림만", none: "구독 안 함" },
-  openData: { eyebrow: "05 · OPEN DATA", title: "데이터를 가져가\n나만의 관찰을 만드세요.", description: "이 페이지와 동일한 집계 통계를 다운로드, 연동, 추가 분석용으로 제공합니다. 개별 응답이나 개인 식별 정보는 포함하지 않습니다.", jsonTitle: "API 연동", jsonDescription: "코드, 시각화, 자동 분석에 적합합니다.", jsonAction: "JSON 열기 ↗", csvTitle: "표와 분석 도구", csvDescription: "각 차트 통계를 긴 형식으로 바로 가져올 수 있습니다.", csvAction: "CSV 다운로드 ↗", pending: "데이터 URL 미설정", latest: "최신 데이터: {time}", format: "형식: UTF-8 · JSON / CSV", granularity: "단위: 집계 통계" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "데이터를 가져가\n나만의 관찰을 만드세요.", description: "KKTIX 등록 원자료를 행 단위로 제공합니다. 이름과 Email 두 필드만 제거해 다운로드, 연동, 추가 분석에 활용할 수 있습니다.", jsonTitle: "행 단위 JSON", jsonDescription: "등록 1건당 객체 1개이며 원래 설문 필드를 유지합니다.", jsonAction: "JSON 열기 ↗", csvTitle: "원본 CSV", csvDescription: "이름과 Email을 제거해 스프레드시트와 분석 도구에 바로 가져올 수 있습니다.", csvAction: "CSV 다운로드 ↗", pending: "데이터 URL 미설정", latest: "최신 데이터: {time}", format: "형식: UTF-8 · JSON / CSV", granularity: "단위: 이름·Email을 제외한 행 단위 데이터" },
   footer: { source: "출처: 사전 등록 데이터, {time} 기준. 복수 선택은 선택 횟수로 계산.", top: "맨 위로 ↑" },
 };
 
