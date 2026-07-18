@@ -18,7 +18,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /data-source\.json/);
   assert.match(page, /setInterval/);
   assert.match(page, /aggregateCsv/);
-  assert.deepEqual(JSON.parse(config), { url: "", format: "json" });
+  const dataSource = JSON.parse(config);
+  assert.equal(dataSource.format, "json");
+  assert.match(dataSource.url, /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/);
   assert.match(workflow, /actions\/configure-pages@v6/);
   assert.match(workflow, /actions\/upload-pages-artifact@v5/);
   assert.match(workflow, /actions\/deploy-pages@v5/);
