@@ -175,7 +175,7 @@ export default function Home() {
         </div>
         <figure className="hero-visual">
           <img
-            src="/coscup-2026-key-visual.png"
+            src="/coscup-2026-banner.png"
             alt="COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物"
           />
         </figure>
