@@ -30,6 +30,14 @@ const entryPaths: BarDatum[] = [
   { label: "學校社團", value: 8 },
 ];
 
+const entryPathsMore: BarDatum[] = [
+  { label: "工作需求／公司同事", value: 8 },
+  { label: "活動／講座", value: 7 },
+  { label: "學校老師／教授", value: 7 },
+  { label: "新聞、報章雜誌", value: 2 },
+  { label: "電子報", value: 1 },
+];
+
 const operatingSystems: BarDatum[] = [
   { label: "macOS", value: 36 },
   { label: "Windows 11", value: 33 },
@@ -37,6 +45,15 @@ const operatingSystems: BarDatum[] = [
   { label: "Debian Linux", value: 11 },
   { label: "Windows 10", value: 9 },
   { label: "Arch Linux", value: 8 },
+];
+
+const operatingSystemsMore: BarDatum[] = [
+  { label: "WSL2", value: 7 },
+  { label: "CentOS（含 Stream／Rocky Linux）", value: 5 },
+  { label: "openSUSE Linux", value: 4 },
+  { label: "Red Hat Linux", value: 2 },
+  { label: "Kali Linux", value: 2 },
+  { label: "Fedora Linux", value: 1 },
 ];
 
 const openSourceSoftware: BarDatum[] = [
@@ -48,12 +65,33 @@ const openSourceSoftware: BarDatum[] = [
   { label: "辦公室軟體", value: 17 },
 ];
 
+const openSourceSoftwareMore: BarDatum[] = [
+  { label: "繪圖軟體", value: 13, detail: "Blender、GIMP、Inkscape、Krita 等" },
+];
+
+const licenses: BarDatum[] = [
+  { label: "MIT", value: 49 },
+  { label: "Apache 2.0", value: 15 },
+  { label: "(L/A)GPL 3.0", value: 11 },
+  { label: "Creative Commons", value: 11, detail: "創用 CC" },
+  { label: "(L/A)GPL 2.0", value: 4 },
+  { label: "BSD", value: 3 },
+  { label: "WTFPL", value: 2 },
+  { label: "CC0", value: 1 },
+];
+
 const workAI: BarDatum[] = [
   { label: "Claude", value: 25 },
   { label: "ChatGPT", value: 13 },
   { label: "Gemini", value: 8 },
   { label: "Codex", value: 8 },
-  { label: "其他工具", value: 7 },
+];
+
+const workAIMore: BarDatum[] = [
+  { label: "OpenCode", value: 2 },
+  { label: "Copilot", value: 2 },
+  { label: "Google Antigravity", value: 2 },
+  { label: "NotebookLM", value: 1 },
 ];
 
 const dailyAI: BarDatum[] = [
@@ -61,6 +99,12 @@ const dailyAI: BarDatum[] = [
   { label: "Gemini", value: 36 },
   { label: "Claude", value: 30 },
   { label: "Grok", value: 6 },
+];
+
+const dailyAIMore: BarDatum[] = [
+  { label: "Meta AI", value: 2 },
+  { label: "Pi", value: 2 },
+  { label: "Wispr Flow", value: 1 },
 ];
 
 const tracks: BarDatum[] = [
@@ -72,6 +116,31 @@ const tracks: BarDatum[] = [
   { label: "Hackers In Taiwan", value: 10 },
   { label: "臺灣自由軟體在地化社群", value: 10 },
   { label: "開源商業模式", value: 10 },
+];
+
+const tracksMore: BarDatum[] = [
+  { label: "Open LLM End User", value: 9, detail: "開源模型應用" },
+  { label: "開源政策", value: 9 },
+  { label: "GDG TW", value: 8 },
+  { label: "Python Track by Taipei.py", value: 8 },
+  { label: "PostgreSQL Taiwan", value: 7 },
+  { label: "匿名網路社群 anoni.net", value: 7 },
+  { label: "農業永續雙軸轉型", value: 7, detail: "農業開放資料社群" },
+  { label: "JSDC × DevFrontier", value: 6 },
+  { label: "Open LLM Tech", value: 6, detail: "開源模型技術" },
+  { label: "台灣 MySQL 使用者社群", value: 6 },
+  { label: "帶您讀源碼", value: 6 },
+  { label: "State of the Map Taiwan／Wikidata Summit", value: 5 },
+  { label: "Golang TW × Cloud Native", value: 5 },
+  { label: "JVM 台灣代表隊", value: 4 },
+  { label: "AI × Civic Tech", value: 4 },
+  { label: "Open Source Inspired Hardware", value: 4 },
+  { label: "Open Source Firmware", value: 3 },
+  { label: "Twinkle AI", value: 2 },
+  { label: "Ruby Taiwan", value: 2 },
+  { label: "OSPN 日本", value: 1, detail: "Open Source People Network" },
+  { label: "Software Defined Vehicle", value: 1 },
+  { label: "Open-EP（E-Paper）", value: 1 },
 ];
 
 const motivations = [
@@ -143,6 +212,28 @@ function LegendItem({ color, children }: { color: string; children: React.ReactN
       <span className={`legend-dot legend-dot--${color}`} />
       {children}
     </span>
+  );
+}
+
+function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] }) {
+  return (
+    <details className="data-expander">
+      <summary>
+        <span>{label}</span>
+        <strong aria-hidden="true">＋</strong>
+      </summary>
+      <div className="number-list">
+        {data.map((item) => (
+          <div className="number-row" key={item.label}>
+            <div>
+              <span>{item.label}</span>
+              {item.detail ? <small>{item.detail}</small> : null}
+            </div>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -321,6 +412,7 @@ export default function Home() {
                 </div>
               </div>
               <BarList data={entryPaths} color="coral" compact />
+              <ExpandableNumbers label="展開其餘 5 種開源入口" data={entryPathsMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
@@ -332,6 +424,7 @@ export default function Home() {
                 </div>
               </div>
               <BarList data={operatingSystems} color="green" compact />
+              <ExpandableNumbers label="展開其餘 6 種作業系統" data={operatingSystemsMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
@@ -349,6 +442,10 @@ export default function Home() {
                     <span>{item.label}</span>
                   </div>
                 ))}
+              </div>
+              <div className="expander-group">
+                <ExpandableNumbers label="展開其餘 1 類開源軟體" data={openSourceSoftwareMore} />
+                <ExpandableNumbers label="展開授權條款完整數字" data={licenses} />
               </div>
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
@@ -378,6 +475,7 @@ export default function Home() {
                 <span className="context-chip">WORK</span>
               </div>
               <BarList data={workAI} color="coral" />
+              <ExpandableNumbers label="展開其餘 4 種工作 AI" data={workAIMore} />
             </article>
 
             <article className="chart-card ai-card ai-card--daily">
@@ -389,6 +487,7 @@ export default function Home() {
                 <span className="context-chip context-chip--blue">LIFE</span>
               </div>
               <BarList data={dailyAI} color="blue" />
+              <ExpandableNumbers label="展開其餘 3 種生活 AI" data={dailyAIMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
           </div>
@@ -436,6 +535,7 @@ export default function Home() {
                 <span className="shape-badge shape-badge--pink">TOP 8</span>
               </div>
               <BarList data={tracks} color="pink" />
+              <ExpandableNumbers label="展開其餘 22 條議程軌" data={tracksMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
