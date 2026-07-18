@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { aggregateCsv } from "../lib/csv-aggregate";
-import { defaultDashboardData, isDashboardData, type BarDatum, type DashboardData } from "../lib/dashboard-data";
+import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData } from "../lib/dashboard-data";
 import {
   copies,
   initialLocale,
@@ -173,21 +173,19 @@ function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy
 export default function Home() {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [data, setData] = useState<DashboardData | null>(null);
-  const [firstExperienceLive, setFirstExperienceLive] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"loading" | "noSource" | "success" | "failed">("loading");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
   const copy = copies[locale];
 
   const loadRemoteData = useCallback(async () => {
     setSyncStatus("loading");
+    setDataSourceUrl("");
     try {
       const configResponse = await fetch(`${import.meta.env.BASE_URL}data-source.json`, { cache: "no-store" });
       if (!configResponse.ok) throw new Error("找不到 data-source.json");
       const config = await configResponse.json() as DataSourceConfig;
-      setDataSourceUrl(config.url || "");
       if (!config.url) {
         setData(defaultDashboardData);
-        setFirstExperienceLive(false);
         setSyncStatus("noSource");
         return;
       }
@@ -203,24 +201,23 @@ export default function Home() {
         const parsed = JSON.parse(text) as unknown;
         const candidate = (parsed as { data?: unknown })?.data ?? parsed;
         if (!isDashboardData(candidate)) throw new Error("彙總 JSON 格式不正確");
-        const hasFirstExperience = Array.isArray(candidate.coscupFirstHeard) && Array.isArray(candidate.ubuconFirstHeard);
         nextData = {
           ...candidate,
           coscupFirstHeard: Array.isArray(candidate.coscupFirstHeard) ? candidate.coscupFirstHeard : defaultDashboardData.coscupFirstHeard,
           ubuconFirstHeard: Array.isArray(candidate.ubuconFirstHeard) ? candidate.ubuconFirstHeard : defaultDashboardData.ubuconFirstHeard,
         };
-        setFirstExperienceLive(hasFirstExperience);
       } else {
         nextData = aggregateCsv(text, config.url.split("/").pop() || "google-sheet.csv");
-        setFirstExperienceLive(true);
       }
 
+      if (!isPublicAggregateSafe(nextData)) throw new Error("公開彙總欄位不符合安全規則");
+      setDataSourceUrl(config.url);
       setData(nextData);
       setSyncStatus("success");
     } catch (error) {
       console.error(error);
       setData((current) => current ?? defaultDashboardData);
-      setFirstExperienceLive(false);
+      setDataSourceUrl("");
       setSyncStatus("failed");
     }
   }, []);
@@ -410,18 +407,7 @@ export default function Home() {
           />
 
           <div className="dashboard-grid dashboard-grid--community">
-            <article className="chart-card chart-card--wide">
-              <div className="card-heading">
-                <div>
-                  <p className="card-kicker">{copy.community.ageKicker}</p>
-                  <h3>{copy.community.ageTitle}</h3>
-                </div>
-                <span className="shape-badge">AGE</span>
-              </div>
-              <BarList data={ageGroups} color="blue" />
-            </article>
-
-            <article className="chart-card chart-card--dark">
+            <article className="chart-card chart-card--dark community-role-feature">
               <div className="card-heading">
                 <div>
                   <p className="card-kicker">{copy.community.roleKicker}</p>
@@ -456,6 +442,17 @@ export default function Home() {
               <p className="card-note">{copy.common.multiSelect}</p>
             </article>
 
+            <article className="chart-card">
+              <div className="card-heading">
+                <div>
+                  <p className="card-kicker">{copy.community.ageKicker}</p>
+                  <h3>{copy.community.ageTitle}</h3>
+                </div>
+                <span className="shape-badge">AGE</span>
+              </div>
+              <BarList data={ageGroups} color="blue" />
+            </article>
+
             <article className="chart-card chart-card--full software-card">
               <div className="card-heading">
                 <div>
@@ -483,7 +480,6 @@ export default function Home() {
               <p className="eyebrow">{copy.firstExperience.eyebrow}</p>
               <h2 id="first-experience-title">{copy.firstExperience.title}</h2>
               <p className="first-experience__description">{copy.firstExperience.description}</p>
-              {!firstExperienceLive && <p className="first-experience__snapshot">{copy.firstExperience.snapshot}</p>}
             </div>
             <div className="first-experience__grid">
               <article className="chart-card first-experience__card">

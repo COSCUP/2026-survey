@@ -237,3 +237,13 @@ export function isDashboardData(value: unknown): value is DashboardData {
       data.newsletters,
   );
 }
+
+export function isPublicAggregateSafe(data: DashboardData): boolean {
+  const allowedAges = new Set(["25–34 歲", "35–44 歲", "19–24 歲", "45–54 歲", "18 歲以下", "不方便告知"]);
+  const expectedRoles = new Set(["使用者", "開發者", "推廣者"]);
+  return (
+    data.ageGroups.length > 0 &&
+    data.ageGroups.every((item) => allowedAges.has(item.label)) &&
+    data.openSourceRoles.some((item) => expectedRoles.has(item.label))
+  );
+}

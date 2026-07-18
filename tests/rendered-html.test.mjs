@@ -31,7 +31,8 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.doesNotMatch(page, /useState<DashboardData>\(defaultDashboardData\)/);
   const dataSource = JSON.parse(config);
   assert.equal(dataSource.format, "json");
-  assert.equal(dataSource.url, "");
+  assert.match(dataSource.url, /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/);
+  assert.match(page, /isPublicAggregateSafe/);
   assert.match(workflow, /actions\/configure-pages@v6/);
   assert.match(workflow, /actions\/upload-pages-artifact@v5/);
   assert.match(workflow, /actions\/deploy-pages@v5/);
@@ -78,4 +79,19 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.deepEqual(data.ubuconFirstHeard.find((item) => item.label === "2026 首次聽聞"), { label: "2026 首次聽聞", value: 1 });
   assert.equal(data.newsletters.ocf.already, 1);
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
+});
+
+test("public aggregate safety rejects shifted personal-name fields", async () => {
+  const source = await readFile(new URL("lib/dashboard-data.ts", root), "utf8");
+  const javascript = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`;
+  const { defaultDashboardData, isPublicAggregateSafe } = await import(moduleUrl);
+
+  assert.equal(isPublicAggregateSafe(defaultDashboardData), true);
+  assert.equal(isPublicAggregateSafe({
+    ...defaultDashboardData,
+    ageGroups: [{ label: "Example Person", value: 1 }],
+  }), false);
 });

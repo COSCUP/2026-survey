@@ -723,19 +723,6 @@ main {
   line-height: 1.7;
 }
 
-.first-experience__snapshot {
-  display: inline-block;
-  margin-top: 14px !important;
-  padding: 8px 12px;
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
-  background: var(--cream);
-  color: var(--ink) !important;
-  font-size: 0.78rem !important;
-  font-weight: 800;
-  line-height: 1.45 !important;
-}
-
 .first-experience__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -900,6 +887,41 @@ main {
 .role-list {
   display: grid;
   gap: 20px;
+}
+
+.community-role-feature {
+  grid-column: 1 / -1;
+  padding: clamp(34px, 5vw, 64px);
+  background:
+    radial-gradient(circle at 88% 12%, rgba(0, 255, 225, 0.15) 0 86px, transparent 88px),
+    var(--sea-dark);
+}
+
+.community-role-feature .card-heading {
+  margin-bottom: clamp(28px, 4vw, 48px);
+  align-items: flex-start;
+}
+
+.community-role-feature .card-heading h3 {
+  font-size: clamp(34px, 4.8vw, 64px);
+  line-height: 1;
+}
+
+.community-role-feature .role-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.community-role-feature .role-row {
+  min-height: 154px;
+  padding: clamp(20px, 2.4vw, 30px);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.community-role-feature .role-row strong {
+  font-size: clamp(42px, 4.8vw, 66px);
 }
 
 .role-row {
@@ -1627,6 +1649,18 @@ footer a {
   .dashboard-grid,
   .ai-grid {
     grid-template-columns: 1fr;
+  }
+
+  .community-role-feature {
+    grid-column: auto;
+  }
+
+  .community-role-feature .role-list {
+    grid-template-columns: 1fr;
+  }
+
+  .community-role-feature .role-row {
+    min-height: 108px;
   }
 
   .kpi-card {
