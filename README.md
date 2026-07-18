@@ -1,98 +1,85 @@
-# vinext-starter
+# COSCUP 2026 Registration Insights
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+COSCUP × UbuCon Asia 2026 報名資料的單頁視覺化網站。網站是純靜態 Vite / React 專案，
+由 GitHub Pages 部署，開啟時會讀取固定的 Google Sheet JSON 網址，並每 5 分鐘重新同步。
 
-## Prerequisites
+## 推薦的資料架構
 
-- Node.js `>=22.13.0`
+```text
+Google Sheet 報名資料
+        ↓ Apps Script 只做彙總
+固定 /exec JSON 網址
+        ↓ 網頁開啟時讀取
+GitHub Pages 視覺化
+```
 
-## Quick Start
+Apps Script 只輸出各圖表的統計數字，不輸出逐筆回答。這比「將整張 Sheet 發佈為 CSV」安全，
+因為 GitHub Pages 與任何可由網頁直接讀取的 Google 網址通常都是公開的。
+
+## 設定 Google Sheet 自動更新
+
+1. 在 Google Sheet 建立名為「報名資料」的工作表，欄位名稱保留從報名系統匯出的原始標題。
+2. 開啟「擴充功能 → Apps Script」。
+3. 將 [google-apps-script/Code.gs](google-apps-script/Code.gs) 貼到 `Code.gs`，確認 `SHEET_NAME` 符合工作表名稱。
+4. 按「部署 → 新增部署 → 網路應用程式」：
+   - 執行身分：我
+   - 具有存取權的使用者：所有人
+5. 複製結尾為 `/exec` 的網址，在瀏覽器開啟一次，確認看到 JSON。
+6. 編輯 `public/data-source.json`：
+
+```json
+{
+  "url": "https://script.google.com/macros/s/xxxxxxxx/exec",
+  "format": "json"
+}
+```
+
+7. 提交並 push 這個設定。此後只要更新 Google Sheet，網站就會在下次開啟或 5 分鐘輪詢時取得新數字，不需重新部署。
+
+## 網站的開放資料介接
+
+網站底部有「開放資料」區塊，使用同一個 Apps Script 網址提供兩種彙總格式：
+
+- JSON：`https://script.google.com/macros/s/xxxxxxxx/exec?format=json`
+- CSV：`https://script.google.com/macros/s/xxxxxxxx/exec?format=csv`
+
+CSV 採長表格式，欄位為 `dataset,label,value,detail,updated_at`。兩個網址都只包含彙總數字，
+可供社群程式、試算表、筆記本與其他視覺化專案介接。
+
+### 若確定要用公開 CSV
+
+網站也支援 Google Sheet「發佈到網路」產生的 CSV：
+
+```json
+{
+  "url": "https://docs.google.com/spreadsheets/d/e/.../pub?output=csv",
+  "format": "csv"
+}
+```
+
+只有在該工作表完全沒有個人資料、時間軌或不適合公開的逐筆回答時，才應使用此方式。
+
+## GitHub Pages 部署
+
+`.github/workflows/pages.yml` 會在 `main` 每次 push 時執行測試、建置並部署 `dist/`。
+
+第一次需在 GitHub 倉庫開啟：
+
+1. `Settings → Pages`
+2. `Build and deployment → Source`
+3. 選擇 `GitHub Actions`
+
+注意：GitHub Pages 網站預設是公開的；私人倉庫是否能開啟 Pages 取決於 GitHub 方案與組織政策。
+
+## 本機開發
+
+需要 Node.js `>=22.13.0`。
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
-
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- `npm run build`：產生 GitHub Pages 靜態檔案。
+- `npm test`：驗證靜態部署、Google Sheet 資料流與 CSV 解析。
+- `npm run lint`：執行 ESLint。

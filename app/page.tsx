@@ -1,156 +1,11 @@
-import type { CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { aggregateCsv } from "../lib/csv-aggregate";
+import { defaultDashboardData, isDashboardData, type BarDatum, type DashboardData } from "../lib/dashboard-data";
 
-type BarDatum = {
-  label: string;
-  value: number;
-  detail?: string;
+type DataSourceConfig = {
+  url?: string;
+  format?: "auto" | "json" | "csv";
 };
-
-const ageGroups: BarDatum[] = [
-  { label: "25–34 歲", value: 22 },
-  { label: "35–44 歲", value: 21 },
-  { label: "19–24 歲", value: 13 },
-  { label: "45–54 歲", value: 6 },
-  { label: "18 歲以下", value: 4 },
-  { label: "不方便告知", value: 2 },
-];
-
-const openSourceRoles: BarDatum[] = [
-  { label: "使用者", value: 59, detail: "Users" },
-  { label: "開發者", value: 42, detail: "Coders" },
-  { label: "推廣者", value: 19, detail: "Promoters" },
-];
-
-const entryPaths: BarDatum[] = [
-  { label: "參加開源社群活動", value: 31 },
-  { label: "實際參與開源專案", value: 16 },
-  { label: "社群媒體", value: 15 },
-  { label: "網路論壇", value: 14 },
-  { label: "親友介紹", value: 12 },
-  { label: "學校社團", value: 8 },
-];
-
-const entryPathsMore: BarDatum[] = [
-  { label: "工作需求／公司同事", value: 8 },
-  { label: "活動／講座", value: 7 },
-  { label: "學校老師／教授", value: 7 },
-  { label: "新聞、報章雜誌", value: 2 },
-  { label: "電子報", value: 1 },
-];
-
-const operatingSystems: BarDatum[] = [
-  { label: "macOS", value: 36 },
-  { label: "Windows 11", value: 33 },
-  { label: "Ubuntu Linux", value: 22 },
-  { label: "Debian Linux", value: 11 },
-  { label: "Windows 10", value: 9 },
-  { label: "Arch Linux", value: 8 },
-];
-
-const operatingSystemsMore: BarDatum[] = [
-  { label: "WSL2", value: 7 },
-  { label: "CentOS（含 Stream／Rocky Linux）", value: 5 },
-  { label: "openSUSE Linux", value: 4 },
-  { label: "Red Hat Linux", value: 2 },
-  { label: "Kali Linux", value: 2 },
-  { label: "Fedora Linux", value: 1 },
-];
-
-const openSourceSoftware: BarDatum[] = [
-  { label: "開源瀏覽器", value: 47 },
-  { label: "Web 伺服器", value: 39 },
-  { label: "後端開發框架", value: 31 },
-  { label: "前端開發框架", value: 25 },
-  { label: "通訊軟體", value: 19 },
-  { label: "辦公室軟體", value: 17 },
-];
-
-const openSourceSoftwareMore: BarDatum[] = [
-  { label: "繪圖軟體", value: 13, detail: "Blender、GIMP、Inkscape、Krita 等" },
-];
-
-const licenses: BarDatum[] = [
-  { label: "MIT", value: 49 },
-  { label: "Apache 2.0", value: 15 },
-  { label: "(L/A)GPL 3.0", value: 11 },
-  { label: "Creative Commons", value: 11, detail: "創用 CC" },
-  { label: "(L/A)GPL 2.0", value: 4 },
-  { label: "BSD", value: 3 },
-  { label: "WTFPL", value: 2 },
-  { label: "CC0", value: 1 },
-];
-
-const workAI: BarDatum[] = [
-  { label: "Claude", value: 25 },
-  { label: "ChatGPT", value: 13 },
-  { label: "Gemini", value: 8 },
-  { label: "Codex", value: 8 },
-];
-
-const workAIMore: BarDatum[] = [
-  { label: "OpenCode", value: 2 },
-  { label: "Copilot", value: 2 },
-  { label: "Google Antigravity", value: 2 },
-  { label: "NotebookLM", value: 1 },
-];
-
-const dailyAI: BarDatum[] = [
-  { label: "ChatGPT", value: 44 },
-  { label: "Gemini", value: 36 },
-  { label: "Claude", value: 30 },
-  { label: "Grok", value: 6 },
-];
-
-const dailyAIMore: BarDatum[] = [
-  { label: "Meta AI", value: 2 },
-  { label: "Pi", value: 2 },
-  { label: "Wispr Flow", value: 1 },
-];
-
-const tracks: BarDatum[] = [
-  { label: "主議程軌", value: 42, detail: "Main Session Track" },
-  { label: "綜合議程", value: 28, detail: "各種開源議題" },
-  { label: "System Software", value: 14 },
-  { label: "AI 開放治理", value: 12 },
-  { label: "UbuCon Asia", value: 11 },
-  { label: "Hackers In Taiwan", value: 10 },
-  { label: "臺灣自由軟體在地化社群", value: 10 },
-  { label: "開源商業模式", value: 10 },
-];
-
-const tracksMore: BarDatum[] = [
-  { label: "Open LLM End User", value: 9, detail: "開源模型應用" },
-  { label: "開源政策", value: 9 },
-  { label: "GDG TW", value: 8 },
-  { label: "Python Track by Taipei.py", value: 8 },
-  { label: "PostgreSQL Taiwan", value: 7 },
-  { label: "匿名網路社群 anoni.net", value: 7 },
-  { label: "農業永續雙軸轉型", value: 7, detail: "農業開放資料社群" },
-  { label: "JSDC × DevFrontier", value: 6 },
-  { label: "Open LLM Tech", value: 6, detail: "開源模型技術" },
-  { label: "台灣 MySQL 使用者社群", value: 6 },
-  { label: "帶您讀源碼", value: 6 },
-  { label: "State of the Map Taiwan／Wikidata Summit", value: 5 },
-  { label: "Golang TW × Cloud Native", value: 5 },
-  { label: "JVM 台灣代表隊", value: 4 },
-  { label: "AI × Civic Tech", value: 4 },
-  { label: "Open Source Inspired Hardware", value: 4 },
-  { label: "Open Source Firmware", value: 3 },
-  { label: "Twinkle AI", value: 2 },
-  { label: "Ruby Taiwan", value: 2 },
-  { label: "OSPN 日本", value: 1, detail: "Open Source People Network" },
-  { label: "Software Defined Vehicle", value: 1 },
-  { label: "Open-EP（E-Paper）", value: 1 },
-];
-
-const motivations = [
-  { value: 26, title: "交流與認識新朋友", tone: "coral" },
-  { value: 23, title: "學習開源技術", tone: "blue" },
-  { value: 15, title: "獲取國際新知", tone: "yellow" },
-  { value: 3, title: "瞭解開放原始碼", tone: "green" },
-  { value: 3, title: "與開源社群互動", tone: "pink" },
-  { value: 3, title: "體驗公民科技", tone: "cyan" },
-];
 
 function BarList({
   data,
@@ -216,6 +71,8 @@ function LegendItem({ color, children }: { color: string; children: React.ReactN
 }
 
 function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] }) {
+  if (!data.length) return null;
+
   return (
     <details className="data-expander">
       <summary>
@@ -238,6 +95,81 @@ function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] })
 }
 
 export default function Home() {
+  const [data, setData] = useState<DashboardData>(defaultDashboardData);
+  const [syncStatus, setSyncStatus] = useState("正在讀取最新資料…");
+  const [dataSourceUrl, setDataSourceUrl] = useState("");
+
+  const loadRemoteData = useCallback(async () => {
+    setSyncStatus("正在讀取最新資料…");
+    try {
+      const configResponse = await fetch(`${import.meta.env.BASE_URL}data-source.json`, { cache: "no-store" });
+      if (!configResponse.ok) throw new Error("找不到 data-source.json");
+      const config = await configResponse.json() as DataSourceConfig;
+      setDataSourceUrl(config.url || "");
+      if (!config.url) {
+        setSyncStatus("尚未設定 Google Sheet，目前顯示內建快照");
+        return;
+      }
+
+      const separator = config.url.includes("?") ? "&" : "?";
+      const response = await fetch(`${config.url}${separator}_=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`資料來源回應 ${response.status}`);
+      const text = await response.text();
+      const looksLikeJson = config.format === "json" || (config.format !== "csv" && text.trimStart().startsWith("{"));
+
+      let nextData: DashboardData;
+      if (looksLikeJson) {
+        const parsed = JSON.parse(text) as unknown;
+        const candidate = (parsed as { data?: unknown })?.data ?? parsed;
+        if (!isDashboardData(candidate)) throw new Error("彙總 JSON 格式不正確");
+        nextData = candidate;
+      } else {
+        nextData = aggregateCsv(text, config.url.split("/").pop() || "google-sheet.csv");
+      }
+
+      setData(nextData);
+      setSyncStatus("已同步 Google Sheet");
+    } catch (error) {
+      console.error(error);
+      setSyncStatus("同步失敗，目前顯示上一版資料");
+    }
+  }, []);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => void loadRemoteData(), 0);
+    const timer = window.setInterval(() => void loadRemoteData(), 5 * 60_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [loadRemoteData]);
+
+  const {
+    ageGroups,
+    openSourceRoles,
+    entryPaths,
+    entryPathsMore,
+    operatingSystems,
+    operatingSystemsMore,
+    openSourceSoftware,
+    openSourceSoftwareMore,
+    licenses,
+    workAI,
+    workAIMore,
+    dailyAI,
+    dailyAIMore,
+    tracks,
+    tracksMore,
+    motivations,
+  } = data;
+  const { summary, newsletters, aiOutlook } = data;
+  const percentage = (value: number, total: number) => `${total ? (value / total) * 100 : 0}%`;
+  const endpoint = (format: "json" | "csv") => {
+    if (!dataSourceUrl) return "";
+    const separator = dataSourceUrl.includes("?") ? "&" : "?";
+    return `${dataSourceUrl}${separator}format=${format}`;
+  };
+
   return (
     <main>
       <a className="skip-link" href="#content">
@@ -254,6 +186,8 @@ export default function Home() {
           <a href="#community">社群輪廓</a>
           <a href="#ai">AI 使用</a>
           <a href="#agenda">議程興趣</a>
+          <a href="#open-data">開放資料</a>
+          <button className="nav-refresh" type="button" onClick={() => void loadRemoteData()}>重新同步</button>
         </nav>
       </header>
 
@@ -266,7 +200,7 @@ export default function Home() {
         </div>
         <figure className="hero-visual">
           <img
-            src="/coscup-2026-banner.png"
+            src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
             alt="COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物"
           />
         </figure>
@@ -275,7 +209,7 @@ export default function Home() {
           <div>
             <p className="eyebrow">REGISTRATION SNAPSHOT · 2026</p>
             <h1>
-              從 98 筆報名，<br />
+              從 {summary.totalRegistrations} 筆報名，<br />
               看見今年的<span>開源海岸線</span>
             </h1>
           </div>
@@ -284,7 +218,8 @@ export default function Home() {
               把行前問卷化成一張可閱讀的參與者地圖：大家如何走進開源、平常使用哪些工具，又最期待在會場遇見什麼。
             </p>
             <div className="update-chip">
-              <span className="status-dot" /> 資料更新至 2026.07.18 22:27
+              <span className="status-dot" /> 資料更新至 {data.source.updatedAt}
+              <small>{syncStatus}</small>
             </div>
           </div>
         </section>
@@ -292,22 +227,22 @@ export default function Home() {
         <section className="kpi-grid" aria-label="報名概況">
           <article className="kpi-card kpi-card--blue">
             <span>累積報名</span>
-            <strong>98</strong>
+            <strong>{summary.totalRegistrations}</strong>
             <small>筆 preregistration</small>
           </article>
           <article className="kpi-card kpi-card--green">
             <span>目前有效</span>
-            <strong>96</strong>
-            <small>扣除 2 筆取消</small>
+            <strong>{summary.activeRegistrations}</strong>
+            <small>扣除 {summary.cancelled} 筆取消</small>
           </article>
           <article className="kpi-card kpi-card--coral">
             <span>開放首分鐘</span>
-            <strong>13</strong>
+            <strong>{summary.within1Minute}</strong>
             <small>筆快速湧入</small>
           </article>
           <article className="kpi-card kpi-card--yellow">
             <span>開放 30 分鐘</span>
-            <strong>26</strong>
+            <strong>{summary.within30Minutes}</strong>
             <small>筆累積報名</small>
           </article>
         </section>
@@ -328,8 +263,8 @@ export default function Home() {
           <div className="pulse-layout">
             <article className="feature-stat">
               <span className="feature-stat__spark">✦</span>
-              <p>20:00:09 → 20:01:09</p>
-              <strong>13</strong>
+              <p>{summary.firstPaymentAt} → {summary.firstMinuteEnd}</p>
+              <strong>{summary.within1Minute}</strong>
               <h3>第一分鐘完成報名</h3>
               <small>報名熱度在開放當下立即形成</small>
             </article>
@@ -338,22 +273,22 @@ export default function Home() {
               <div className="timeline-row">
                 <span>1 分鐘</span>
                 <div><i style={{ "--pulse": "35%" } as CSSProperties} /></div>
-                <strong>13</strong>
+                <strong>{summary.within1Minute}</strong>
               </div>
               <div className="timeline-row">
                 <span>5 分鐘</span>
                 <div><i style={{ "--pulse": "43%" } as CSSProperties} /></div>
-                <strong>16</strong>
+                <strong>{summary.within5Minutes}</strong>
               </div>
               <div className="timeline-row">
                 <span>30 分鐘</span>
                 <div><i style={{ "--pulse": "70%" } as CSSProperties} /></div>
-                <strong>26</strong>
+                <strong>{summary.within30Minutes}</strong>
               </div>
               <div className="timeline-row">
                 <span>2 小時</span>
                 <div><i style={{ "--pulse": "100%" } as CSSProperties} /></div>
-                <strong>37</strong>
+                <strong>{summary.within2Hours}</strong>
               </div>
               <p className="card-note">數字為各時間點的累積報名筆數。</p>
             </div>
@@ -412,7 +347,7 @@ export default function Home() {
                 </div>
               </div>
               <BarList data={entryPaths} color="coral" compact />
-              <ExpandableNumbers label="展開其餘 5 種開源入口" data={entryPathsMore} />
+              <ExpandableNumbers label={`展開其餘 ${entryPathsMore.length} 種開源入口`} data={entryPathsMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
@@ -424,7 +359,7 @@ export default function Home() {
                 </div>
               </div>
               <BarList data={operatingSystems} color="green" compact />
-              <ExpandableNumbers label="展開其餘 6 種作業系統" data={operatingSystemsMore} />
+              <ExpandableNumbers label={`展開其餘 ${operatingSystemsMore.length} 種作業系統`} data={operatingSystemsMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
@@ -444,7 +379,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="expander-group">
-                <ExpandableNumbers label="展開其餘 1 類開源軟體" data={openSourceSoftwareMore} />
+                <ExpandableNumbers label={`展開其餘 ${openSourceSoftwareMore.length} 類開源軟體`} data={openSourceSoftwareMore} />
                 <ExpandableNumbers label="展開授權條款完整數字" data={licenses} />
               </div>
               <p className="card-note">複選題，呈現被選擇的人次。</p>
@@ -470,24 +405,24 @@ export default function Home() {
               <div className="card-heading">
                 <div>
                   <p className="card-kicker">工作中使用</p>
-                  <h3>Claude 位居首位</h3>
+                  <h3>{workAI[0]?.label || "AI 工具"} 位居首位</h3>
                 </div>
                 <span className="context-chip">WORK</span>
               </div>
               <BarList data={workAI} color="coral" />
-              <ExpandableNumbers label="展開其餘 4 種工作 AI" data={workAIMore} />
+              <ExpandableNumbers label={`展開其餘 ${workAIMore.length} 種工作 AI`} data={workAIMore} />
             </article>
 
             <article className="chart-card ai-card ai-card--daily">
               <div className="card-heading">
                 <div>
                   <p className="card-kicker">生活中使用</p>
-                  <h3>ChatGPT 使用人次最高</h3>
+                  <h3>{dailyAI[0]?.label || "AI 工具"} 使用人次最高</h3>
                 </div>
                 <span className="context-chip context-chip--blue">LIFE</span>
               </div>
               <BarList data={dailyAI} color="blue" />
-              <ExpandableNumbers label="展開其餘 3 種生活 AI" data={dailyAIMore} />
+              <ExpandableNumbers label={`展開其餘 ${dailyAIMore.length} 種生活 AI`} data={dailyAIMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
           </div>
@@ -499,18 +434,12 @@ export default function Home() {
               <p>相較於零和競爭，參與者更常把 AI 與開源視為可以相互推進的力量。</p>
             </div>
             <div className="outlook-stats">
-              <div>
-                <strong>50</strong>
-                <span>兩者相輔相成</span>
-              </div>
-              <div>
-                <strong>24</strong>
-                <span>開源比以前更重要</span>
-              </div>
-              <div>
-                <strong>5</strong>
-                <span>認為開源已死</span>
-              </div>
+              {aiOutlook.slice(0, 3).map((item) => (
+                <div key={item.label}>
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
             <p className="card-note card-note--light">複選題，呈現被選擇的人次。</p>
           </article>
@@ -535,7 +464,7 @@ export default function Home() {
                 <span className="shape-badge shape-badge--pink">TOP 8</span>
               </div>
               <BarList data={tracks} color="pink" />
-              <ExpandableNumbers label="展開其餘 22 條議程軌" data={tracksMore} />
+              <ExpandableNumbers label={`展開其餘 ${tracksMore.length} 條議程軌`} data={tracksMore} />
               <p className="card-note">複選題，呈現被選擇的人次。</p>
             </article>
 
@@ -567,23 +496,23 @@ export default function Home() {
               <div className="newsletter-row">
                 <div className="newsletter-title">
                   <strong>COSCUP 電子報</strong>
-                  <span>訂閱 38 · 僅收行前／會後通知 20 · 不訂閱 15</span>
+                  <span>訂閱 {newsletters.coscup.subscribe} · 僅收行前／會後通知 {newsletters.coscup.eventOnly} · 不訂閱 {newsletters.coscup.none}</span>
                 </div>
-                <div className="stacked-bar" aria-label="COSCUP 電子報：訂閱 38，僅收行前及會後通知 20，不訂閱 15">
-                  <span className="stacked-bar__green" style={{ width: "52.05%" }} />
-                  <span className="stacked-bar__yellow" style={{ width: "27.4%" }} />
-                  <span className="stacked-bar__neutral" style={{ width: "20.55%" }} />
+                <div className="stacked-bar" aria-label={`COSCUP 電子報：訂閱 ${newsletters.coscup.subscribe}，僅收活動通知 ${newsletters.coscup.eventOnly}，不訂閱 ${newsletters.coscup.none}`}>
+                  <span className="stacked-bar__green" style={{ width: percentage(newsletters.coscup.subscribe, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
+                  <span className="stacked-bar__yellow" style={{ width: percentage(newsletters.coscup.eventOnly, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
+                  <span className="stacked-bar__neutral" style={{ width: percentage(newsletters.coscup.none, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
                 </div>
               </div>
               <div className="newsletter-row">
                 <div className="newsletter-title">
                   <strong>OCF 電子報</strong>
-                  <span>訂閱 27 · 已訂閱 21 · 不訂閱 25</span>
+                  <span>訂閱 {newsletters.ocf.subscribe} · 已訂閱 {newsletters.ocf.already} · 不訂閱 {newsletters.ocf.none}</span>
                 </div>
-                <div className="stacked-bar" aria-label="OCF 電子報：訂閱 27，已訂閱 21，不訂閱 25">
-                  <span className="stacked-bar__green" style={{ width: "36.99%" }} />
-                  <span className="stacked-bar__blue" style={{ width: "28.77%" }} />
-                  <span className="stacked-bar__neutral" style={{ width: "34.24%" }} />
+                <div className="stacked-bar" aria-label={`OCF 電子報：訂閱 ${newsletters.ocf.subscribe}，已訂閱 ${newsletters.ocf.already}，不訂閱 ${newsletters.ocf.none}`}>
+                  <span className="stacked-bar__green" style={{ width: percentage(newsletters.ocf.subscribe, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
+                  <span className="stacked-bar__blue" style={{ width: percentage(newsletters.ocf.already, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
+                  <span className="stacked-bar__neutral" style={{ width: percentage(newsletters.ocf.none, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
                 </div>
               </div>
               <div className="legend">
@@ -597,12 +526,46 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="section section--open-data" id="open-data">
+        <div className="open-data-shell">
+          <div className="open-data-copy">
+            <p className="eyebrow">05 · OPEN DATA</p>
+            <h2>把數據帶走，<br />做出你的觀察。</h2>
+            <p>
+              我們提供與本頁一致的彙總統計，歡迎社群下載、介接與延伸分析。
+              開放資料不包含逐筆回覆或可識別個人的資料。
+            </p>
+          </div>
+
+          <div className="open-data-formats">
+            <article className="format-card format-card--json">
+              <span className="format-badge">JSON</span>
+              <h3>介接用 API</h3>
+              <p>適合程式、視覺化與自動分析流程。</p>
+              {dataSourceUrl ? <a href={endpoint("json")} target="_blank" rel="noreferrer">開啟 JSON ↗</a> : <span className="format-pending">等待設定資料網址</span>}
+            </article>
+            <article className="format-card format-card--csv">
+              <span className="format-badge">CSV</span>
+              <h3>表格與分析工具</h3>
+              <p>將各圖表統計整理為長表，可直接匯入。</p>
+              {dataSourceUrl ? <a href={endpoint("csv")} target="_blank" rel="noreferrer">下載 CSV ↗</a> : <span className="format-pending">等待設定資料網址</span>}
+            </article>
+          </div>
+
+          <div className="open-data-meta">
+            <span>最新資料：{data.source.updatedAt}</span>
+            <span>格式：UTF-8 · JSON / CSV</span>
+            <span>粒度：彙總統計</span>
+          </div>
+        </div>
+      </section>
+
       <footer>
         <div className="footer-mark">
           <span>✦</span>
           <strong>COSCUP × UbuCon Asia 2026</strong>
         </div>
-        <p>資料來源：活動預先報名資料，統計截止 2026.07.18 22:27。複選題以人次計算。</p>
+        <p>資料來源：活動預先報名資料，統計截止 {data.source.updatedAt}。複選題以人次計算。</p>
         <a href="#top">回到頁首 ↑</a>
       </footer>
     </main>
