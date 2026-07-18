@@ -49,7 +49,10 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /function buildPublicRows_/);
   assert.match(appsScript, /function importLatestKktixCsv/);
   assert.match(appsScript, /function installKktixImportTrigger/);
+  assert.match(appsScript, /function selectNewImportRows_/);
+  assert.doesNotMatch(appsScript, /sheet\.clearContents\(\)/);
   assert.match(readme, /每 15 分鐘/);
+  assert.match(readme, /只新增、不覆寫/);
   assert.match(readme, /view=raw&format=csv/);
   assert.doesNotMatch(page, /填答率/);
 });
@@ -151,5 +154,30 @@ test("Apps Script supports the latest field keys and option labels", async () =>
       headers: ["付款時間", "公開回答"],
       rows: [["2026/07/17 20:00:09", "聯絡 [REDACTED]"]],
     },
+  );
+
+  context.importHeaders = ["姓名", "Email", "付款時間", "取票時間", "公開回答"];
+  context.existingImportRows = [
+    ["Example Person", "person@example.com", "2026/07/17 20:00:09", "2026-07-17T20:00:09+08:00", "舊答案"],
+  ];
+  context.incomingImportRows = [
+    ["Example Person", "person@example.com", "2026/07/17 20:00:09", "2026-07-17T20:00:09+08:00", "修改後答案"],
+    ["New Person", "new@example.com", "2026/07/18 10:30:00", "2026-07-18T10:30:00+08:00", "新報名"],
+  ];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("selectNewImportRows_(existingImportRows, incomingImportRows, importHeaders)", context)),
+    [["New Person", "new@example.com", "2026/07/18 10:30:00", "2026-07-18T10:30:00+08:00", "新報名"]],
+  );
+
+  context.duplicateExistingRows = [
+    ["", "", "2026/07/18 11:00:00", "2026-07-18T11:00:00+08:00", "第一筆"],
+  ];
+  context.duplicateIncomingRows = [
+    ["", "", "2026/07/18 11:00:00", "2026-07-18T11:00:00+08:00", "第一筆"],
+    ["", "", "2026/07/18 11:00:00", "2026-07-18T11:00:00+08:00", "同秒新增第二筆"],
+  ];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("selectNewImportRows_(duplicateExistingRows, duplicateIncomingRows, importHeaders)", context)),
+    [["", "", "2026/07/18 11:00:00", "2026-07-18T11:00:00+08:00", "同秒新增第二筆"]],
   );
 });

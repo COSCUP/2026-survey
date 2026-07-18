@@ -14,12 +14,20 @@ const SHEET_NAME = "報名資料";
 const SCHEMA_VERSION = "2026-07-19-v2";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
-// Save each full KKTIX export into the Drive folder. The newest CSV replaces
-// SHEET_NAME, preventing duplicate rows when exports contain the full snapshot.
+// Save each full KKTIX export into the Drive folder. The newest CSV is compared
+// with SHEET_NAME and only registrations not already present are appended.
 const TARGET_SPREADSHEET_ID = "PASTE_GOOGLE_SHEET_ID_HERE";
 const KKTIX_IMPORT_FOLDER_ID = "PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE";
 const IMPORT_HANDLER = "importLatestKktixCsv";
 const LAST_IMPORTED_FILE_KEY = "coscup_latest_kktix_file_id";
+
+const IMPORT_KEY_HINTS = {
+  ticketId: ["票券編號", "票券號碼", "ticket id", "ticket number", "registration id", "registration number"],
+  orderId: ["訂單編號", "訂單號碼", "order id", "order number", "order no"],
+  name: ["姓名", "name"],
+  email: ["email", "e-mail", "電子郵件"],
+  pickup: ["取票時間", "ticket time", "check-in time"],
+};
 
 const PUBLIC_EXCLUDED_HEADER_KEYWORDS = [
   "姓名", "email", "e-mail", "電子郵件", "身分證", "手機", "聯絡電話",
@@ -212,17 +220,141 @@ function importLatestKktixCsv_() {
   assertKktixImportHeaders_(values[0]);
   const width = Math.max(...values.map((row) => row.length));
   const normalizedValues = values.map((row) => row.concat(Array(width - row.length).fill("")));
+  const incomingHeaders = normalizedValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
+  const incomingRows = normalizedValues.slice(1).filter((row) => row.some((cell) => String(cell).trim() !== ""));
 
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
-  sheet.clearContents();
-  sheet.getRange(1, 1, normalizedValues.length, width).setValues(normalizedValues);
+  let newRows = incomingRows;
+  let status = "initialized";
+  if (sheet.getLastRow() > 0 && sheet.getLastColumn() > 0) {
+    const existingValues = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getDisplayValues();
+    const existingHeaders = existingValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
+    assertMatchingImportHeaders_(existingHeaders, incomingHeaders);
+    const existingRows = existingValues.slice(1).filter((row) => row.some((cell) => String(cell).trim() !== ""));
+    newRows = selectNewImportRows_(existingRows, incomingRows, incomingHeaders);
+    status = newRows.length ? "appended" : "no-new-rows";
+  } else {
+    ensureSheetSize_(sheet, incomingRows.length + 1, width);
+    const initialRange = sheet.getRange(1, 1, incomingRows.length + 1, width);
+    initialRange.setNumberFormat("@");
+    initialRange.setValues([incomingHeaders].concat(incomingRows));
+  }
+
+  if (status === "appended") {
+    const startRow = sheet.getLastRow() + 1;
+    ensureSheetSize_(sheet, startRow + newRows.length - 1, width);
+    const appendRange = sheet.getRange(startRow, 1, newRows.length, width);
+    appendRange.setNumberFormat("@");
+    appendRange.setValues(newRows);
+  }
   sheet.setFrozenRows(1);
   SpreadsheetApp.flush();
   properties.setProperty(LAST_IMPORTED_FILE_KEY, fileSignature);
   properties.setProperty(`${LAST_IMPORTED_FILE_KEY}_name`, latestFile.getName());
   properties.setProperty(`${LAST_IMPORTED_FILE_KEY}_time`, new Date().toISOString());
-  return { status: "imported", fileName: latestFile.getName(), rows: normalizedValues.length - 1 };
+  return {
+    status,
+    fileName: latestFile.getName(),
+    sourceRows: incomingRows.length,
+    appendedRows: status === "initialized" ? incomingRows.length : newRows.length,
+    totalRows: sheet.getLastRow() - 1,
+  };
+}
+
+function ensureSheetSize_(sheet, requiredRows, requiredColumns) {
+  if (requiredRows > sheet.getMaxRows()) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), requiredRows - sheet.getMaxRows());
+  }
+  if (requiredColumns > sheet.getMaxColumns()) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), requiredColumns - sheet.getMaxColumns());
+  }
+}
+
+function assertMatchingImportHeaders_(existingHeaders, incomingHeaders) {
+  const normalize = (header) => String(header).replace(/^\uFEFF/, "").trim().replace(/\s+/g, " ").toLowerCase();
+  const existing = existingHeaders.map(normalize);
+  const incoming = incomingHeaders.map(normalize);
+  if (existing.length !== incoming.length || existing.some((header, index) => header !== incoming[index])) {
+    throw new Error("CSV 與「報名資料」的欄位或順序不同。為避免資料錯位，已停止差異匯入，且未修改既有資料。");
+  }
+}
+
+function selectNewImportRows_(existingRows, incomingRows, headers) {
+  const keyConfig = buildImportKeyConfig_(headers);
+  const remainingExisting = new Map();
+  existingRows.forEach((row) => {
+    const key = importRowKey_(row, keyConfig);
+    remainingExisting.set(key, (remainingExisting.get(key) || 0) + 1);
+  });
+
+  const newRows = [];
+  incomingRows.forEach((row) => {
+    const key = importRowKey_(row, keyConfig);
+    const remaining = remainingExisting.get(key) || 0;
+    if (remaining > 0) remainingExisting.set(key, remaining - 1);
+    else newRows.push(row);
+  });
+  return newRows;
+}
+
+function buildImportKeyConfig_(headers) {
+  const config = {
+    ticketId: findOptionalColumn_(headers, IMPORT_KEY_HINTS.ticketId),
+    orderId: findOptionalColumn_(headers, IMPORT_KEY_HINTS.orderId),
+    name: findPersonalColumn_(headers, IMPORT_KEY_HINTS.name),
+    email: findPersonalColumn_(headers, IMPORT_KEY_HINTS.email),
+    payment: findOptionalColumn_(headers, COLUMN_HINTS.payment),
+    pickup: findOptionalColumn_(headers, IMPORT_KEY_HINTS.pickup),
+  };
+  if (config.ticketId < 0 && config.orderId < 0 && config.payment < 0 && config.pickup < 0) {
+    throw new Error("找不到可用於差異匯入的訂單、票券或時間欄位。");
+  }
+  return config;
+}
+
+function importRowKey_(row, config) {
+  const value = (index) => index < 0 ? "" : normalizeImportKeyValue_(row[index]);
+  const ticketId = value(config.ticketId);
+  if (ticketId) return `ticket:${ticketId}`;
+  const parts = [
+    value(config.orderId),
+    value(config.email),
+    value(config.name),
+    normalizeImportTimestamp_(config.payment < 0 ? "" : row[config.payment]),
+    normalizeImportTimestamp_(config.pickup < 0 ? "" : row[config.pickup]),
+  ];
+  if (!parts.some(Boolean)) throw new Error("有資料列缺少可用於差異比對的識別內容。");
+  return `registration:${parts.join("|")}`;
+}
+
+function normalizeImportKeyValue_(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeImportTimestamp_(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})[T\s]+(\d{1,2}):(\d{2}):(\d{2})/);
+  if (!match) return normalizeImportKeyValue_(text);
+  return [match[1], match[2].padStart(2, "0"), match[3].padStart(2, "0")].join("-")
+    + `T${match[4].padStart(2, "0")}:${match[5]}:${match[6]}`;
+}
+
+function findOptionalColumn_(headers, hints) {
+  const candidates = Array.isArray(hints) ? hints : [hints];
+  const compactHints = candidates.map((hint) => String(hint).replace(/\s/g, "").toLowerCase());
+  return headers.findIndex((header) => {
+    const compactHeader = String(header).replace(/\s/g, "").toLowerCase();
+    return compactHints.some((hint) => compactHeader.includes(hint));
+  });
+}
+
+function findPersonalColumn_(headers, aliases) {
+  const normalizedAliases = aliases.map((alias) => String(alias).trim().toLowerCase());
+  return headers.findIndex((header) => {
+    const normalizedHeader = String(header).replace(/^\uFEFF/, "").trim().toLowerCase();
+    return normalizedAliases.some((alias) => normalizedHeader === alias || normalizedHeader.startsWith(`${alias} `));
+  });
 }
 
 function installKktixImportTrigger() {
