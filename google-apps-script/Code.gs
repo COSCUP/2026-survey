@@ -67,12 +67,25 @@ function doGet(event) {
     const sheet = spreadsheet.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error(`找不到工作表：${SHEET_NAME}`);
     const data = aggregateSheet_(sheet.getDataRange().getDisplayValues(), spreadsheet.getName(), sheet.getName());
+    assertPublicAggregate_(data);
     if (event && event.parameter && event.parameter.format === "csv") {
       return ContentService.createTextOutput(toCsv_(data)).setMimeType(ContentService.MimeType.CSV);
     }
     return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ error: String(error.message || error) })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function assertPublicAggregate_(data) {
+  const allowedAges = ["25–34 歲", "35–44 歲", "19–24 歲", "45–54 歲", "18 歲以下", "不方便告知"];
+  const ageLabels = data.ageGroups.map((item) => item.label);
+  if (!ageLabels.length || ageLabels.some((label) => !allowedAges.includes(label))) {
+    throw new Error("年齡欄位對應異常，為避免公開個人資料已停止輸出。請檢查 COLUMN_HINTS 與工作表標題列。");
+  }
+  const expectedRoles = ["使用者", "開發者", "推廣者"];
+  if (!data.openSourceRoles.some((item) => expectedRoles.includes(item.label))) {
+    throw new Error("開源角色欄位對應異常，已停止輸出。請檢查 COLUMN_HINTS 與工作表標題列。");
   }
 }
 

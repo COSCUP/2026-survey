@@ -31,7 +31,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.doesNotMatch(page, /useState<DashboardData>\(defaultDashboardData\)/);
   const dataSource = JSON.parse(config);
   assert.equal(dataSource.format, "json");
-  assert.match(dataSource.url, /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/);
+  assert.equal(dataSource.url, "");
   assert.match(workflow, /actions\/configure-pages@v6/);
   assert.match(workflow, /actions\/upload-pages-artifact@v5/);
   assert.match(workflow, /actions\/deploy-pages@v5/);
@@ -40,6 +40,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /aggregate counts only/);
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
+  assert.match(appsScript, /assertPublicAggregate_/);
   assert.doesNotMatch(page, /填答率/);
 });
 
