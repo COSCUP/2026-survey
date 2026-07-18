@@ -6,9 +6,10 @@ import ts from "typescript";
 const root = new URL("../", import.meta.url);
 
 test("GitHub Pages build contains the live data-source workflow", async () => {
-  const [html, page, config, workflow, appsScript] = await Promise.all([
+  const [html, page, i18n, config, workflow, appsScript] = await Promise.all([
     readFile(new URL("dist/index.html", root), "utf8"),
     readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("lib/i18n.ts", root), "utf8"),
     readFile(new URL("dist/data-source.json", root), "utf8"),
     readFile(new URL(".github/workflows/pages.yml", root), "utf8"),
     readFile(new URL("google-apps-script/Code.gs", root), "utf8"),
@@ -19,7 +20,14 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /setInterval/);
   assert.match(page, /aggregateCsv/);
   assert.match(page, /useState<DashboardData \| null>\(null\)/);
-  assert.match(page, /不顯示過期快照/);
+  assert.match(i18n, /不顯示過期快照/);
+  assert.match(i18n, /正體中文/);
+  assert.match(i18n, /English/);
+  assert.match(i18n, /日本語/);
+  assert.match(i18n, /한국어/);
+  assert.match(page, /LanguageSwitcher/);
+  assert.match(page, /first-experience/);
+  assert.doesNotMatch(page, /nav-refresh/);
   assert.doesNotMatch(page, /useState<DashboardData>\(defaultDashboardData\)/);
   const dataSource = JSON.parse(config);
   assert.equal(dataSource.format, "json");
@@ -30,6 +38,8 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /function doGet\(event\)/);
   assert.match(appsScript, /event\.parameter\.format === "csv"/);
   assert.match(appsScript, /aggregate counts only/);
+  assert.match(appsScript, /coscupFirstHeard/);
+  assert.match(appsScript, /ubuconFirstHeard/);
   assert.doesNotMatch(page, /填答率/);
 });
 
@@ -42,13 +52,15 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   const { aggregateCsv } = await import(moduleUrl);
 
   const headers = [
-    "付款時間", "取消時間", "你的年齡", "最開始透過什麼管道接觸開放原始碼",
+    "付款時間", "取消時間", "你的年齡", "第一次聽到 COSCUP 是哪一年", "第一次聽到 UbuCon Asia 是哪一年",
+    "最開始透過什麼管道接觸開放原始碼",
     "開放原始碼運動中扮演什麼角色", "平常使用的作業系統", "經常使用哪一種開源軟體",
     "授權條款釋出你的作品", "工作中會使用到的AI", "生活中會使用到的AI",
     "AI 會殺死開放原始碼", "COSCUP 大會中得到什麼收穫", "議程軌有興趣", "COSCUP 電子報", "OCF 電子報",
   ];
   const cells = [
     "2026/07/17 20:00:09", "", "25-34 years old 25-34 歲",
+    "2023", "2026",
     "News, Newspapers and magazines 新聞、報章雜誌", "Users 使用者", "macOS",
     "Web browser瀏覽器軟體（Firefox 等）", "MIT", "Claude", "ChatGPT",
     "Complementing each other 兩者相輔相成", "Learn new open source technologies 學習開源技術",
@@ -61,6 +73,8 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.equal(data.summary.totalRegistrations, 1);
   assert.equal(data.summary.within1Minute, 1);
   assert.deepEqual(data.entryPaths[0], { label: "新聞、報章雜誌", value: 1 });
+  assert.deepEqual(data.coscupFirstHeard.find((item) => item.label === "2023–2025"), { label: "2023–2025", value: 1 });
+  assert.deepEqual(data.ubuconFirstHeard.find((item) => item.label === "2026 首次聽聞"), { label: "2026 首次聽聞", value: 1 });
   assert.equal(data.newsletters.ocf.already, 1);
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
 });

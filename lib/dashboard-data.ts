@@ -27,6 +27,8 @@ export type DashboardData = {
     within2Hours: number;
   };
   ageGroups: BarDatum[];
+  coscupFirstHeard: BarDatum[];
+  ubuconFirstHeard: BarDatum[];
   openSourceRoles: BarDatum[];
   entryPaths: BarDatum[];
   entryPathsMore: BarDatum[];
@@ -72,6 +74,19 @@ export const defaultDashboardData: DashboardData = {
     { label: "45–54 歲", value: 6 },
     { label: "18 歲以下", value: 4 },
     { label: "不方便告知", value: 2 },
+  ],
+  coscupFirstHeard: [
+    { label: "2006–2012", value: 10 },
+    { label: "2013–2017", value: 20 },
+    { label: "2018–2022", value: 17 },
+    { label: "2023–2025", value: 22 },
+    { label: "2026", value: 2 },
+    { label: "無法判定", value: 2 },
+  ],
+  ubuconFirstHeard: [
+    { label: "2026 首次聽聞", value: 36 },
+    { label: "2025 以前已聽聞", value: 18 },
+    { label: "未聽過／無法判定", value: 19 },
   ],
   openSourceRoles: [
     { label: "使用者", value: 59, detail: "Users" },

@@ -1,0 +1,340 @@
+import type { BarDatum, DashboardData } from "./dashboard-data";
+
+export const localeOptions = [
+  { value: "zh-Hant", label: "正體中文" },
+  { value: "en", label: "English" },
+  { value: "ja", label: "日本語" },
+  { value: "ko", label: "한국어" },
+] as const;
+
+export type Locale = (typeof localeOptions)[number]["value"];
+
+const zhHant = {
+  pageTitle: "COSCUP × UbuCon Asia 2026｜報名者快照",
+  pageDescription: "從最新報名資料，看見 COSCUP × UbuCon Asia 2026 的開源海岸線。",
+  language: "語言",
+  home: "回到頁首",
+  skip: "跳至主要內容",
+  nav: {
+    label: "頁面導覽",
+    pulse: "報名節奏",
+    community: "社群輪廓",
+    ai: "AI 使用",
+    agenda: "議程興趣",
+    openData: "開放資料",
+  },
+  loading: {
+    eyebrow: "LIVE REGISTRATION DATA · 2026",
+    title: "正在讀取最新報名資料",
+    description: "同步完成後將直接呈現 Google Sheet 的最新數字。",
+    syncing: "即時同步中",
+    noSnapshot: "不顯示過期快照",
+  },
+  sync: {
+    loading: "正在讀取最新資料…",
+    noSource: "尚未設定 Google Sheet，目前顯示內建快照",
+    success: "已同步 Google Sheet",
+    failed: "同步失敗，目前顯示上一版資料",
+    updated: "資料更新至 {time}",
+  },
+  imageAlt: "COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物",
+  logoAlt: "COSCUP 標誌",
+  hero: {
+    eyebrow: "REGISTRATION SNAPSHOT · 2026",
+    beforeCount: "從",
+    afterCount: "筆報名，",
+    title: "看見今年的",
+    highlight: "開源海岸線",
+    description: "把行前問卷化成一張可閱讀的參與者地圖：大家如何走進開源、平常使用哪些工具，又最期待在會場遇見什麼。",
+    overview: "報名概況",
+  },
+  kpi: {
+    total: "累積報名",
+    totalUnit: "筆 preregistration",
+    active: "目前有效",
+    activeNote: "扣除 {count} 筆取消",
+    firstMinute: "開放首分鐘",
+    firstMinuteNote: "筆快速湧入",
+    thirtyMinutes: "開放 30 分鐘",
+    thirtyMinutesNote: "筆累積報名",
+  },
+  pulse: {
+    eyebrow: "01 · REGISTRATION PULSE",
+    title: "開放後的第一波浪潮",
+    description: "7 月 17 日晚間 20:00 開放後，最密集的報名出現在起跑的第一分鐘。",
+    firstMinute: "第一分鐘完成報名",
+    heat: "報名熱度在開放當下立即形成",
+    minute1: "1 分鐘",
+    minute5: "5 分鐘",
+    minute30: "30 分鐘",
+    hour2: "2 小時",
+    note: "數字為各時間點的累積報名筆數。",
+  },
+  common: {
+    multiSelect: "複選題，呈現被選擇的人次。",
+    aiTool: "AI 工具",
+    expandMore: "展開其餘 {count} {unit}",
+  },
+  community: {
+    eyebrow: "02 · COMMUNITY PROFILE",
+    title: "這片海岸，聚集了哪些人？",
+    description: "25–44 歲是目前最顯著的年齡帶；開源身分則跨越使用、開發與推廣，彼此重疊。",
+    ageKicker: "年齡分布",
+    ageTitle: "25–44 歲形成主要區段",
+    roleKicker: "開源角色",
+    roleTitle: "不只一種身分",
+    roleNote: "複選題，同一人可同時扮演多種角色。",
+    entryKicker: "開源入口",
+    entryTitle: "社群活動是最常見的起點",
+    entryUnit: "種開源入口",
+    osKicker: "日常系統",
+    osTitle: "跨平台，是開源人的日常",
+    osUnit: "種作業系統",
+    softwareKicker: "開源軟體版圖",
+    softwareTitle: "從瀏覽器一路延伸到前後端",
+    softwareUnit: "類開源軟體",
+    licenses: "展開授權條款完整數字",
+  },
+  firstExperience: {
+    eyebrow: "OPEN-SOURCE FIRST ENCOUNTERS",
+    title: "從哪一年、哪一條路，走進這片海岸？",
+    description: "把第一次聽見 COSCUP 與 UbuCon Asia 的時間，連同開源入口與授權偏好放在一起看。",
+    snapshot: "初體驗題目目前顯示 7 月 18 日快照；Google Apps Script 更新後會自動改用最新資料。",
+    coscupKicker: "第一次聽到 COSCUP",
+    coscupTitle: "跨越多個世代的社群記憶",
+    ubuconKicker: "第一次聽到 UbuCon Asia",
+    ubuconTitle: "2026 成為最主要的新起點",
+    yearNote: "開放題依年份區間彙總；空白不納入圖表。",
+    entryKicker: "第一次接觸開源的起點",
+    entryTitle: "活動、專案與社群關係網是主要入口",
+    licenseKicker: "願意支持的授權條款",
+    licenseTitle: "MIT 領先，開放選擇仍然多元",
+  },
+  ai: {
+    eyebrow: "03 · AI & OPEN SOURCE",
+    title: "AI 已在工作與生活中成為日常",
+    description: "工作情境以 Claude 居首；生活情境則由 ChatGPT、Gemini 與 Claude 形成主要組合。",
+    workKicker: "工作中使用",
+    workTop: "{tool} 位居首位",
+    workUnit: "種工作 AI",
+    dailyKicker: "生活中使用",
+    dailyTop: "{tool} 使用人次最高",
+    dailyUnit: "種生活 AI",
+    outlookKicker: "AI 會殺死開源，還是開啟新篇章？",
+    outlookTitle: "多數聲音指向「共生」與「更重要」",
+    outlookDescription: "相較於零和競爭，參與者更常把 AI 與開源視為可以相互推進的力量。",
+  },
+  agenda: {
+    eyebrow: "04 · WHAT PEOPLE WANT",
+    title: "大家想在會場帶走什麼？",
+    description: "交流、技術與國際新知是最主要的期待；議程興趣則從主議程一路展開至系統、AI 治理與在地化。",
+    trackKicker: "議程興趣排行",
+    trackTitle: "主議程軌領先，多元社群緊隨",
+    trackUnit: "條議程軌",
+    motivationKicker: "參與期待",
+    motivationTitle: "人與知識，都是會場主角",
+  },
+  newsletter: {
+    title: "會後，還想繼續保持連結嗎？",
+    description: "電子報意願顯示，活動之外的長期內容與社群聯繫仍有明確需求。",
+    coscup: "COSCUP 電子報",
+    ocf: "OCF 電子報",
+    subscribe: "願意訂閱",
+    already: "已訂閱",
+    eventOnly: "僅收活動通知",
+    none: "不訂閱",
+  },
+  openData: {
+    eyebrow: "05 · OPEN DATA",
+    title: "把數據帶走，\n做出你的觀察。",
+    description: "我們提供與本頁一致的彙總統計，歡迎社群下載、介接與延伸分析。開放資料不包含逐筆回覆或可識別個人的資料。",
+    jsonTitle: "介接用 API",
+    jsonDescription: "適合程式、視覺化與自動分析流程。",
+    jsonAction: "開啟 JSON ↗",
+    csvTitle: "表格與分析工具",
+    csvDescription: "將各圖表統計整理為長表，可直接匯入。",
+    csvAction: "下載 CSV ↗",
+    pending: "等待設定資料網址",
+    latest: "最新資料：{time}",
+    format: "格式：UTF-8 · JSON / CSV",
+    granularity: "粒度：彙總統計",
+  },
+  footer: {
+    source: "資料來源：活動預先報名資料，統計截止 {time}。複選題以人次計算。",
+    top: "回到頁首 ↑",
+  },
+};
+
+type DeepStrings<T> = T extends string ? string : { [K in keyof T]: DeepStrings<T[K]> };
+export type Copy = DeepStrings<typeof zhHant>;
+
+const en: Copy = {
+  pageTitle: "COSCUP × UbuCon Asia 2026 | Registration Snapshot",
+  pageDescription: "Explore the open-source shoreline of COSCUP × UbuCon Asia 2026 through the latest registration data.",
+  language: "Language", home: "Back to top", skip: "Skip to main content",
+  nav: { label: "Page navigation", pulse: "Registration pace", community: "Community profile", ai: "AI use", agenda: "Session interests", openData: "Open data" },
+  loading: { eyebrow: "LIVE REGISTRATION DATA · 2026", title: "Loading the latest registration data", description: "The latest figures from Google Sheets will appear as soon as synchronization is complete.", syncing: "Syncing live data", noSnapshot: "No outdated snapshot shown" },
+  sync: { loading: "Loading the latest data…", noSource: "Google Sheets is not configured; showing the built-in snapshot", success: "Synced with Google Sheets", failed: "Sync failed; showing the previous data", updated: "Updated {time}" },
+  imageAlt: "COSCUP 2026 and UbuCon Asia key visual featuring Taiwan, the ocean, summer snacks, and mascots", logoAlt: "COSCUP logo",
+  hero: { eyebrow: "REGISTRATION SNAPSHOT · 2026", beforeCount: "From", afterCount: "registrations,", title: "discover this year’s", highlight: "open-source shoreline", description: "We turned the pre-event survey into a readable participant map: how people entered open source, which tools they use, and what they hope to encounter at the event.", overview: "Registration overview" },
+  kpi: { total: "Total registrations", totalUnit: "preregistrations", active: "Currently active", activeNote: "after {count} cancellations", firstMinute: "Opening minute", firstMinuteNote: "quick registrations", thirtyMinutes: "First 30 minutes", thirtyMinutesNote: "cumulative registrations" },
+  pulse: { eyebrow: "01 · REGISTRATION PULSE", title: "The first wave after registration opened", description: "Registration opened at 20:00 on July 17, and the highest concentration arrived in the very first minute.", firstMinute: "registered in the first minute", heat: "Interest formed immediately when registration opened", minute1: "1 minute", minute5: "5 minutes", minute30: "30 minutes", hour2: "2 hours", note: "Figures are cumulative registrations at each time point." },
+  common: { multiSelect: "Multiple choice; figures represent total selections.", aiTool: "AI tool", expandMore: "Show {count} more {unit}" },
+  community: { eyebrow: "02 · COMMUNITY PROFILE", title: "Who is gathering on this shoreline?", description: "Ages 25–44 form the clearest age band. Open-source identities overlap across using, developing, and promoting.", ageKicker: "Age distribution", ageTitle: "Ages 25–44 form the main segment", roleKicker: "Open-source roles", roleTitle: "More than one identity", roleNote: "Multiple choice; one person may hold several roles.", entryKicker: "Paths into open source", entryTitle: "Community events are the most common starting point", entryUnit: "paths into open source", osKicker: "Everyday systems", osTitle: "Cross-platform is everyday life", osUnit: "operating systems", softwareKicker: "Open-source software landscape", softwareTitle: "From browsers to front-end and back-end", softwareUnit: "software categories", licenses: "Show complete license figures" },
+  firstExperience: { eyebrow: "OPEN-SOURCE FIRST ENCOUNTERS", title: "When and how did people reach this shoreline?", description: "See when participants first heard of COSCUP and UbuCon Asia alongside their paths into open source and preferred licenses.", snapshot: "First-encounter questions currently use the July 18 snapshot. They will switch to the latest data after the Google Apps Script update.", coscupKicker: "First heard of COSCUP", coscupTitle: "Community memory across generations", ubuconKicker: "First heard of UbuCon Asia", ubuconTitle: "2026 is the leading new starting point", yearNote: "Open-text answers are grouped into year ranges; blanks are excluded.", entryKicker: "First paths into open source", entryTitle: "Events, projects, and social networks lead the way", licenseKicker: "Preferred licenses to support", licenseTitle: "MIT leads, with a diverse open-license mix" },
+  ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI is now part of work and everyday life", description: "Claude leads at work, while ChatGPT, Gemini, and Claude form the main everyday mix.", workKicker: "Used at work", workTop: "{tool} ranks first", workUnit: "work AI tools", dailyKicker: "Used in daily life", dailyTop: "{tool} has the most selections", dailyUnit: "daily AI tools", outlookKicker: "Will AI kill open source, or open a new chapter?", outlookTitle: "Most responses point to coexistence and greater importance", outlookDescription: "Rather than a zero-sum rivalry, participants more often see AI and open source as forces that can move each other forward." },
+  agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "What do people want to take away?", description: "Connection, technology, and international insight are the leading expectations. Session interests span main sessions, systems, AI governance, and localization.", trackKicker: "Session interest ranking", trackTitle: "Main sessions lead, followed by diverse communities", trackUnit: "session tracks", motivationKicker: "What participants expect", motivationTitle: "People and knowledge both take center stage" },
+  newsletter: { title: "Stay connected after the event?", description: "Newsletter preferences show clear demand for long-term content and community connections beyond the event.", coscup: "COSCUP newsletter", ocf: "OCF newsletter", subscribe: "Subscribe", already: "Already subscribed", eventOnly: "Event updates only", none: "Do not subscribe" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "Take the data.\nBuild your own view.", description: "We provide the same aggregate statistics used on this page for download, integration, and further analysis. The open data contains no individual responses or personally identifiable information.", jsonTitle: "API integration", jsonDescription: "For code, visualizations, and automated analysis.", jsonAction: "Open JSON ↗", csvTitle: "Tables and analysis tools", csvDescription: "Long-form chart statistics ready to import.", csvAction: "Download CSV ↗", pending: "Data URL not configured", latest: "Latest data: {time}", format: "Format: UTF-8 · JSON / CSV", granularity: "Granularity: aggregate statistics" },
+  footer: { source: "Source: preregistration data, updated {time}. Multiple-choice questions count selections.", top: "Back to top ↑" },
+};
+
+const ja: Copy = {
+  pageTitle: "COSCUP × UbuCon Asia 2026｜登録者スナップショット",
+  pageDescription: "最新の登録データから COSCUP × UbuCon Asia 2026 のオープンソースの海岸線を読み解きます。",
+  language: "言語", home: "ページ上部へ", skip: "メインコンテンツへ移動",
+  nav: { label: "ページナビゲーション", pulse: "登録の流れ", community: "コミュニティ像", ai: "AI 利用", agenda: "セッションへの関心", openData: "オープンデータ" },
+  loading: { eyebrow: "LIVE REGISTRATION DATA · 2026", title: "最新の登録データを読み込み中", description: "同期完了後、Google スプレッドシートの最新値を表示します。", syncing: "ライブデータを同期中", noSnapshot: "古いスナップショットは表示しません" },
+  sync: { loading: "最新データを読み込み中…", noSource: "Google スプレッドシート未設定のため内蔵スナップショットを表示", success: "Google スプレッドシートと同期済み", failed: "同期に失敗したため前回のデータを表示", updated: "更新：{time}" },
+  imageAlt: "台湾、海、夏の食べ物、マスコットを描いた COSCUP 2026 × UbuCon Asia キービジュアル", logoAlt: "COSCUP ロゴ",
+  hero: { eyebrow: "REGISTRATION SNAPSHOT · 2026", beforeCount: "", afterCount: "件の登録から、", title: "今年の", highlight: "オープンソースの海岸線", description: "事前アンケートを、参加者がどのようにオープンソースと出会い、どのツールを使い、会場で何を期待しているかを読み解ける地図にしました。", overview: "登録概要" },
+  kpi: { total: "累計登録", totalUnit: "事前登録", active: "有効登録", activeNote: "{count} 件のキャンセルを除く", firstMinute: "開始 1 分", firstMinuteNote: "件の早期登録", thirtyMinutes: "開始 30 分", thirtyMinutesNote: "件の累計登録" },
+  pulse: { eyebrow: "01 · REGISTRATION PULSE", title: "受付開始後の第一波", description: "7 月 17 日 20:00 の開始後、登録は最初の 1 分間に最も集中しました。", firstMinute: "最初の 1 分間に登録", heat: "受付開始と同時に関心が高まりました", minute1: "1 分", minute5: "5 分", minute30: "30 分", hour2: "2 時間", note: "各時点の累計登録数です。" },
+  common: { multiSelect: "複数選択。数値は選択数です。", aiTool: "AI ツール", expandMore: "残り {count} {unit}を表示" },
+  community: { eyebrow: "02 · COMMUNITY PROFILE", title: "この海岸に集まる人々", description: "25〜44 歳が最も明確な年齢層です。オープンソースでの役割は、利用、開発、普及にまたがっています。", ageKicker: "年齢分布", ageTitle: "25〜44 歳が中心層", roleKicker: "オープンソースでの役割", roleTitle: "役割は一つだけではない", roleNote: "複数選択。1 人が複数の役割を担う場合があります。", entryKicker: "入り口", entryTitle: "コミュニティイベントが最も一般的な出発点", entryUnit: "種類の入り口", osKicker: "日常の OS", osTitle: "クロスプラットフォームが日常", osUnit: "種類の OS", softwareKicker: "オープンソースソフトウェア", softwareTitle: "ブラウザからフロントエンド、バックエンドまで", softwareUnit: "カテゴリ", licenses: "ライセンスの全データを表示" },
+  firstExperience: { eyebrow: "OPEN-SOURCE FIRST ENCOUNTERS", title: "いつ、どの道からこの海岸へ？", description: "COSCUP と UbuCon Asia を初めて知った時期を、オープンソースへの入り口や好みのライセンスと一緒に見ます。", snapshot: "初めての出会いに関する設問は現在 7 月 18 日時点のスナップショットです。Google Apps Script 更新後に最新データへ自動で切り替わります。", coscupKicker: "COSCUP を初めて知った時期", coscupTitle: "世代を越えて続くコミュニティの記憶", ubuconKicker: "UbuCon Asia を初めて知った時期", ubuconTitle: "2026 年が最も大きな新しい出発点", yearNote: "自由回答は年代別に集計し、空欄は除外しています。", entryKicker: "オープンソースとの最初の出会い", entryTitle: "イベント、プロジェクト、人とのつながりが主な入り口", licenseKicker: "支持したいライセンス", licenseTitle: "MIT が首位、選択肢は多様" },
+  ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI は仕事と日常の一部に", description: "仕事では Claude が首位。日常では ChatGPT、Gemini、Claude が中心です。", workKicker: "仕事で利用", workTop: "{tool} が首位", workUnit: "種類の仕事用 AI", dailyKicker: "日常で利用", dailyTop: "{tool} の選択数が最多い", dailyUnit: "種類の日常用 AI", outlookKicker: "AI はオープンソースを終わらせるのか、新しい章を開くのか？", outlookTitle: "多くの声は「共生」と「より重要」へ", outlookDescription: "参加者は、AI とオープンソースをゼロサム競争ではなく、互いを前進させる力と見ています。" },
+  agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "会場から何を持ち帰りたい？", description: "交流、技術、海外の最新知識が主な期待です。関心はメインセッションからシステム、AI ガバナンス、ローカライズまで広がります。", trackKicker: "セッション関心ランキング", trackTitle: "メインセッションに続く多様なコミュニティ", trackUnit: "セッショントラック", motivationKicker: "参加への期待", motivationTitle: "人と知識、どちらも会場の主役" },
+  newsletter: { title: "イベント後もつながりますか？", description: "ニュースレターの希望から、イベント以外の継続的なコンテンツとコミュニティとのつながりへの明確な需要が見えます。", coscup: "COSCUP ニュースレター", ocf: "OCF ニュースレター", subscribe: "購読希望", already: "購読済み", eventOnly: "イベント通知のみ", none: "購読しない" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "データを持ち帰り、\nあなたの視点を。", description: "このページと同じ集計データを、ダウンロード、連携、追加分析のために公開しています。個別の回答や個人を特定できる情報は含みません。", jsonTitle: "API 連携", jsonDescription: "プログラム、可視化、自動分析向け。", jsonAction: "JSON を開く ↗", csvTitle: "表と分析ツール", csvDescription: "各チャートの集計をロング形式で取り込めます。", csvAction: "CSV をダウンロード ↗", pending: "データ URL が未設定です", latest: "最新データ：{time}", format: "形式：UTF-8 · JSON / CSV", granularity: "粒度：集計統計" },
+  footer: { source: "出典：事前登録データ、{time} 時点。複数選択は選択数で集計。", top: "ページ上部へ ↑" },
+};
+
+const ko: Copy = {
+  pageTitle: "COSCUP × UbuCon Asia 2026 | 등록자 스냅샷",
+  pageDescription: "최신 등록 데이터로 COSCUP × UbuCon Asia 2026의 오픈소스 해안선을 살펴봅니다.",
+  language: "언어", home: "맨 위로", skip: "본문으로 건너뛰기",
+  nav: { label: "페이지 탐색", pulse: "등록 흐름", community: "커뮤니티 프로필", ai: "AI 사용", agenda: "세션 관심도", openData: "오픈 데이터" },
+  loading: { eyebrow: "LIVE REGISTRATION DATA · 2026", title: "최신 등록 데이터를 불러오는 중", description: "동기화가 완료되면 Google Sheets의 최신 수치를 표시합니다.", syncing: "실시간 데이터 동기화 중", noSnapshot: "오래된 스냅샷은 표시하지 않음" },
+  sync: { loading: "최신 데이터를 불러오는 중…", noSource: "Google Sheets가 설정되지 않아 내장 스냅샷을 표시합니다", success: "Google Sheets 동기화 완료", failed: "동기화에 실패해 이전 데이터를 표시합니다", updated: "업데이트: {time}" },
+  imageAlt: "대만, 바다, 여름 음식과 마스코트를 담은 COSCUP 2026 × UbuCon Asia 키 비주얼", logoAlt: "COSCUP 로고",
+  hero: { eyebrow: "REGISTRATION SNAPSHOT · 2026", beforeCount: "", afterCount: "건의 등록으로 보는", title: "올해의", highlight: "오픈소스 해안선", description: "사전 설문을 참가자 지도로 바꿔, 사람들이 오픈소스를 어떻게 접했고 무슨 도구를 쓰며 행사에서 무엇을 기대하는지 살펴봅니다.", overview: "등록 현황" },
+  kpi: { total: "누적 등록", totalUnit: "사전 등록", active: "현재 유효", activeNote: "취소 {count}건 제외", firstMinute: "오픈 첫 1분", firstMinuteNote: "건의 빠른 등록", thirtyMinutes: "오픈 30분", thirtyMinutesNote: "건의 누적 등록" },
+  pulse: { eyebrow: "01 · REGISTRATION PULSE", title: "등록 오픈 후 첫 번째 파도", description: "7월 17일 20:00 오픈 후 첫 1분에 등록이 가장 밀집했습니다.", firstMinute: "첫 1분 내 등록 완료", heat: "등록 오픈과 동시에 관심이 형성됐습니다", minute1: "1분", minute5: "5분", minute30: "30분", hour2: "2시간", note: "각 시점의 누적 등록 건수입니다." },
+  common: { multiSelect: "복수 선택 문항으로, 수치는 선택 횟수입니다.", aiTool: "AI 도구", expandMore: "나머지 {count}개 {unit} 보기" },
+  community: { eyebrow: "02 · COMMUNITY PROFILE", title: "이 해안에 모인 사람들", description: "25–44세가 가장 뚜렷한 연령대입니다. 오픈소스 역할은 사용, 개발, 확산에 걸쳐 서로 겹칩니다.", ageKicker: "연령 분포", ageTitle: "25–44세가 주요 구간", roleKicker: "오픈소스 역할", roleTitle: "하나 이상의 정체성", roleNote: "복수 선택 문항으로, 한 사람이 여러 역할을 맡을 수 있습니다.", entryKicker: "오픈소스 입문", entryTitle: "커뮤니티 행사가 가장 흔한 출발점", entryUnit: "가지 입문 경로", osKicker: "일상 OS", osTitle: "크로스 플랫폼은 일상", osUnit: "가지 운영체제", softwareKicker: "오픈소스 소프트웨어", softwareTitle: "브라우저에서 프론트엔드와 백엔드까지", softwareUnit: "개 소프트웨어 분류", licenses: "라이선스 전체 수치 보기" },
+  firstExperience: { eyebrow: "OPEN-SOURCE FIRST ENCOUNTERS", title: "언제, 어떤 길로 이 해안에 도착했을까?", description: "COSCUP과 UbuCon Asia를 처음 알게 된 시기를 오픈소스 입문 경로와 선호 라이선스와 함께 살펴봅니다.", snapshot: "첫 경험 문항은 현재 7월 18일 스냅샷을 표시합니다. Google Apps Script를 업데이트하면 최신 데이터로 자동 전환됩니다.", coscupKicker: "COSCUP을 처음 알게 된 시기", coscupTitle: "세대를 가로지르는 커뮤니티의 기억", ubuconKicker: "UbuCon Asia를 처음 알게 된 시기", ubuconTitle: "2026년이 가장 큰 새 출발점", yearNote: "자유 응답은 연도 구간별로 집계하고 빈칸은 제외했습니다.", entryKicker: "오픈소스와의 첫 만남", entryTitle: "행사, 프로젝트, 사람 관계가 주요 입문 경로", licenseKicker: "지지하고 싶은 라이선스", licenseTitle: "MIT가 선두, 선택은 다양" },
+  ai: { eyebrow: "03 · AI & OPEN SOURCE", title: "AI는 업무와 일상의 일부", description: "업무에서는 Claude가 1위이며, 일상에서는 ChatGPT, Gemini, Claude가 주요 조합입니다.", workKicker: "업무에서 사용", workTop: "{tool} 1위", workUnit: "가지 업무용 AI", dailyKicker: "일상에서 사용", dailyTop: "{tool} 선택 횟수 1위", dailyUnit: "가지 일상용 AI", outlookKicker: "AI는 오픈소스를 끝낼까, 새 장을 열까?", outlookTitle: "대부분은 공존과 더 큰 중요성을 지향", outlookDescription: "참가자들은 AI와 오픈소스를 제로섬 경쟁보다 서로를 전진시키는 힘으로 보는 경우가 더 많습니다." },
+  agenda: { eyebrow: "04 · WHAT PEOPLE WANT", title: "행사에서 무엇을 얻어가고 싶을까?", description: "교류, 기술, 국제 정보가 가장 큰 기대입니다. 세션 관심은 메인 세션에서 시스템, AI 거버넌스, 현지화까지 확장됩니다.", trackKicker: "세션 관심도 순위", trackTitle: "메인 세션 다음으로 다양한 커뮤니티", trackUnit: "개 세션 트랙", motivationKicker: "참가 기대", motivationTitle: "사람과 지식 모두 행사의 주인공" },
+  newsletter: { title: "행사 후에도 연결을 이어갈까요?", description: "뉴스레터 선호는 행사 밖에서도 장기 콘텐츠와 커뮤니티 연결에 대한 명확한 수요를 보여줍니다.", coscup: "COSCUP 뉴스레터", ocf: "OCF 뉴스레터", subscribe: "구독 희망", already: "구독 중", eventOnly: "행사 알림만", none: "구독 안 함" },
+  openData: { eyebrow: "05 · OPEN DATA", title: "데이터를 가져가\n나만의 관찰을 만드세요.", description: "이 페이지와 동일한 집계 통계를 다운로드, 연동, 추가 분석용으로 제공합니다. 개별 응답이나 개인 식별 정보는 포함하지 않습니다.", jsonTitle: "API 연동", jsonDescription: "코드, 시각화, 자동 분석에 적합합니다.", jsonAction: "JSON 열기 ↗", csvTitle: "표와 분석 도구", csvDescription: "각 차트 통계를 긴 형식으로 바로 가져올 수 있습니다.", csvAction: "CSV 다운로드 ↗", pending: "데이터 URL 미설정", latest: "최신 데이터: {time}", format: "형식: UTF-8 · JSON / CSV", granularity: "단위: 집계 통계" },
+  footer: { source: "출처: 사전 등록 데이터, {time} 기준. 복수 선택은 선택 횟수로 계산.", top: "맨 위로 ↑" },
+};
+
+export const copies: Record<Locale, Copy> = { "zh-Hant": zhHant, en, ja, ko };
+
+export function initialLocale(): Locale {
+  if (typeof window === "undefined") return "zh-Hant";
+  const requested = new URLSearchParams(window.location.search).get("lang");
+  const stored = window.localStorage.getItem("coscup-survey-locale");
+  const candidate = requested || stored || window.navigator.language;
+  if (candidate === "en" || candidate?.startsWith("en-")) return "en";
+  if (candidate === "ja" || candidate?.startsWith("ja-")) return "ja";
+  if (candidate === "ko" || candidate?.startsWith("ko-")) return "ko";
+  return "zh-Hant";
+}
+
+export function interpolate(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));
+}
+
+const translatedLabels: Record<string, Partial<Record<Locale, string>>> = {
+  "無法判定": { en: "Unclear", ja: "判定不能", ko: "판별 불가" },
+  "2026 首次聽聞": { en: "First heard in 2026", ja: "2026 年に初めて知った", ko: "2026년에 처음 알게 됨" },
+  "2025 以前已聽聞": { en: "Already knew before 2026", ja: "2025 年以前から知っていた", ko: "2025년 이전에 이미 알고 있었음" },
+  "未聽過／無法判定": { en: "Had not heard / unclear", ja: "知らなかった／判定不能", ko: "들은 적 없음 / 판별 불가" },
+  "18 歲以下": { en: "Under 18", ja: "18 歳以下", ko: "18세 이하" },
+  "19–24 歲": { en: "Ages 19–24", ja: "19〜24 歳", ko: "19–24세" },
+  "25–34 歲": { en: "Ages 25–34", ja: "25〜34 歳", ko: "25–34세" },
+  "35–44 歲": { en: "Ages 35–44", ja: "35〜44 歳", ko: "35–44세" },
+  "45–54 歲": { en: "Ages 45–54", ja: "45〜54 歳", ko: "45–54세" },
+  "不方便告知": { en: "Prefer not to say", ja: "回答しない", ko: "응답하지 않음" },
+  "使用者": { en: "Users", ja: "ユーザー", ko: "사용자" },
+  "開發者": { en: "Developers", ja: "開発者", ko: "개발자" },
+  "推廣者": { en: "Advocates", ja: "普及・推進者", ko: "확산 활동가" },
+  "Users": { ja: "ユーザー", ko: "사용자" }, "Coders": { ja: "開発者", ko: "개발자" }, "Promoters": { ja: "普及・推進", ko: "확산" },
+  "參加開源社群活動": { en: "Open-source community events", ja: "オープンソースコミュニティのイベント", ko: "오픈소스 커뮤니티 행사" },
+  "實際參與開源專案": { en: "Contributing to open-source projects", ja: "オープンソースプロジェクトへの参加", ko: "오픈소스 프로젝트 참여" },
+  "社群媒體": { en: "Social media", ja: "SNS", ko: "소셜 미디어" },
+  "網路論壇": { en: "Online forums", ja: "オンラインフォーラム", ko: "온라인 포럼" },
+  "親友介紹": { en: "Friends and family", ja: "友人・家族の紹介", ko: "친구와 가족의 소개" },
+  "學校社團": { en: "School clubs", ja: "学校のサークル", ko: "학교 동아리" },
+  "工作需求／公司同事": { en: "Work needs or colleagues", ja: "仕事上の必要・同僚", ko: "업무 필요 또는 동료" },
+  "活動／講座": { en: "Events or talks", ja: "イベント・講演", ko: "행사 또는 강연" },
+  "學校老師／教授": { en: "Teachers or professors", ja: "先生・教授", ko: "교사 또는 교수" },
+  "新聞、報章雜誌": { en: "News and magazines", ja: "ニュース・雑誌", ko: "뉴스와 잡지" },
+  "電子報": { en: "Newsletters", ja: "ニュースレター", ko: "뉴스레터" },
+  "CentOS（含 Stream／Rocky Linux）": { en: "CentOS (including Stream / Rocky Linux)", ja: "CentOS（Stream／Rocky Linux を含む）", ko: "CentOS(Stream / Rocky Linux 포함)" },
+  "開源瀏覽器": { en: "Open-source browsers", ja: "オープンソースブラウザ", ko: "오픈소스 브라우저" },
+  "Web 伺服器": { en: "Web servers", ja: "Web サーバー", ko: "웹 서버" },
+  "後端開發框架": { en: "Back-end frameworks", ja: "バックエンドフレームワーク", ko: "백엔드 프레임워크" },
+  "前端開發框架": { en: "Front-end frameworks", ja: "フロントエンドフレームワーク", ko: "프론트엔드 프레임워크" },
+  "通訊軟體": { en: "Communication software", ja: "コミュニケーションソフト", ko: "커뮤니케이션 소프트웨어" },
+  "辦公室軟體": { en: "Office suites", ja: "オフィスソフト", ko: "오피스 소프트웨어" },
+  "繪圖軟體": { en: "Graphics software", ja: "グラフィックスソフト", ko: "그래픽 소프트웨어" },
+  "Blender、GIMP、Inkscape、Krita 等": { en: "Blender, GIMP, Inkscape, Krita, etc.", ja: "Blender、GIMP、Inkscape、Krita など", ko: "Blender, GIMP, Inkscape, Krita 등" },
+  "創用 CC": { en: "Creative Commons", ja: "クリエイティブ・コモンズ", ko: "크리에이티브 커먼즈" },
+  "兩者相輔相成": { en: "They complement each other", ja: "互いに補完し合う", ko: "서로 보완함" },
+  "開源比以前更重要": { en: "Open source is more important than before", ja: "オープンソースは以前より重要", ko: "오픈소스가 이전보다 더 중요함" },
+  "認為開源已死": { en: "Open source is dead", ja: "オープンソースは終わった", ko: "오픈소스는 끝났다고 봄" },
+  "主議程軌": { en: "Main Session Track", ja: "メインセッション", ko: "메인 세션 트랙" },
+  "綜合議程": { en: "General Sessions", ja: "総合セッション", ko: "종합 세션" },
+  "各種開源議題": { en: "A range of open-source topics", ja: "さまざまなオープンソーストピック", ko: "다양한 오픈소스 주제" },
+  "AI 開放治理": { en: "Open AI Governance", ja: "AI オープンガバナンス", ko: "AI 개방형 거버넌스" },
+  "臺灣自由軟體在地化社群": { en: "Taiwan Free Software Localization Community", ja: "台湾自由ソフトウェアローカライズコミュニティ", ko: "대만 자유 소프트웨어 현지화 커뮤니티" },
+  "開源商業模式": { en: "Open-source business models", ja: "オープンソースビジネスモデル", ko: "오픈소스 비즈니스 모델" },
+  "開源政策": { en: "Open-source policy", ja: "オープンソース政策", ko: "오픈소스 정책" },
+  "開源模型應用": { en: "Open-model applications", ja: "オープンモデル応用", ko: "오픈 모델 응용" },
+  "開源模型技術": { en: "Open-model technology", ja: "オープンモデル技術", ko: "오픈 모델 기술" },
+  "交流與認識新朋友": { en: "Connect and meet new people", ja: "交流と新しい出会い", ko: "교류와 새로운 만남" },
+  "學習開源技術": { en: "Learn open-source technology", ja: "オープンソース技術を学ぶ", ko: "오픈소스 기술 학습" },
+  "獲取國際新知": { en: "Gain international insight", ja: "海外の最新知識を得る", ko: "국제 최신 정보 습득" },
+  "與開源社群互動": { en: "Engage with open-source communities", ja: "オープンソースコミュニティと交流", ko: "오픈소스 커뮤니티와 교류" },
+  "瞭解開放原始碼": { en: "Understand open source", ja: "オープンソースを理解", ko: "오픈소스 이해" },
+  "體驗公民科技": { en: "Experience civic tech", ja: "シビックテックを体験", ko: "시빅테크 경험" },
+};
+
+function translateText(value: string | undefined, locale: Locale) {
+  if (!value || locale === "zh-Hant") return value;
+  return translatedLabels[value]?.[locale] ?? value;
+}
+
+function translateBars(items: BarDatum[], locale: Locale): BarDatum[] {
+  return items.map((item) => ({ ...item, label: translateText(item.label, locale) || item.label, detail: translateText(item.detail, locale) }));
+}
+
+export function localizeDashboardData(data: DashboardData, locale: Locale): DashboardData {
+  if (locale === "zh-Hant") return data;
+  return {
+    ...data,
+    ageGroups: translateBars(data.ageGroups, locale),
+    coscupFirstHeard: translateBars(data.coscupFirstHeard, locale),
+    ubuconFirstHeard: translateBars(data.ubuconFirstHeard, locale),
+    openSourceRoles: translateBars(data.openSourceRoles, locale),
+    entryPaths: translateBars(data.entryPaths, locale),
+    entryPathsMore: translateBars(data.entryPathsMore, locale),
+    operatingSystems: translateBars(data.operatingSystems, locale),
+    operatingSystemsMore: translateBars(data.operatingSystemsMore, locale),
+    openSourceSoftware: translateBars(data.openSourceSoftware, locale),
+    openSourceSoftwareMore: translateBars(data.openSourceSoftwareMore, locale),
+    licenses: translateBars(data.licenses, locale),
+    workAI: translateBars(data.workAI, locale),
+    workAIMore: translateBars(data.workAIMore, locale),
+    dailyAI: translateBars(data.dailyAI, locale),
+    dailyAIMore: translateBars(data.dailyAIMore, locale),
+    aiOutlook: translateBars(data.aiOutlook, locale),
+    tracks: translateBars(data.tracks, locale),
+    tracksMore: translateBars(data.tracksMore, locale),
+    motivations: data.motivations.map((item) => ({ ...item, title: translateText(item.title, locale) || item.title })),
+  };
+}

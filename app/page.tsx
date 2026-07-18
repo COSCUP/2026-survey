@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { aggregateCsv } from "../lib/csv-aggregate";
 import { defaultDashboardData, isDashboardData, type BarDatum, type DashboardData } from "../lib/dashboard-data";
+import {
+  copies,
+  initialLocale,
+  interpolate,
+  localeOptions,
+  localizeDashboardData,
+  type Copy,
+  type Locale,
+} from "../lib/i18n";
 
 type DataSourceConfig = {
   url?: string;
@@ -94,14 +103,36 @@ function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] })
   );
 }
 
-function InitialLoading() {
+function Brand({ copy }: { copy: Copy }) {
+  return (
+    <a className="wordmark" href="#top" aria-label={copy.home}>
+      <img
+        className="site-logo"
+        src="https://coscup.org/2026/_ipx/w_640&f_webp/coscup_logo.png"
+        alt={copy.logoAlt}
+      />
+      <span className="wordmark-kicker">2026</span>
+    </a>
+  );
+}
+
+function LanguageSwitcher({ locale, copy, onChange }: { locale: Locale; copy: Copy; onChange: (locale: Locale) => void }) {
+  return (
+    <label className="language-switcher">
+      <span>{copy.language}</span>
+      <select value={locale} onChange={(event) => onChange(event.target.value as Locale)}>
+        {localeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy: Copy; onLocaleChange: (locale: Locale) => void }) {
   return (
     <main className="initial-loading" aria-busy="true">
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="回到頁首">
-          <span className="wordmark-kicker">2026</span>
-          <span>COSCUP × UbuCon Asia</span>
-        </a>
+        <Brand copy={copy} />
+        <LanguageSwitcher locale={locale} copy={copy} onChange={onLocaleChange} />
       </header>
 
       <div id="top" className="hero-shell hero-shell--loading">
@@ -114,22 +145,22 @@ function InitialLoading() {
         <figure className="hero-visual">
           <img
             src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
-            alt="COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物"
+            alt={copy.imageAlt}
           />
         </figure>
 
         <section className="hero-copy loading-copy">
           <div>
-            <p className="eyebrow">LIVE REGISTRATION DATA · 2026</p>
-            <h1>正在讀取最新報名資料</h1>
+            <p className="eyebrow">{copy.loading.eyebrow}</p>
+            <h1>{copy.loading.title}</h1>
           </div>
           <div className="hero-intro">
-            <p>同步完成後將直接呈現 Google Sheet 的最新數字。</p>
+            <p>{copy.loading.description}</p>
             <div className="update-chip update-chip--loading">
               <span className="loading-pulse" aria-hidden="true" />
               <div>
-                <strong>即時同步中</strong>
-                <small>不顯示過期快照</small>
+                <strong>{copy.loading.syncing}</strong>
+                <small>{copy.loading.noSnapshot}</small>
               </div>
             </div>
           </div>
@@ -140,12 +171,15 @@ function InitialLoading() {
 }
 
 export default function Home() {
+  const [locale, setLocale] = useState<Locale>(initialLocale);
   const [data, setData] = useState<DashboardData | null>(null);
-  const [syncStatus, setSyncStatus] = useState("正在讀取最新資料…");
+  const [firstExperienceLive, setFirstExperienceLive] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"loading" | "noSource" | "success" | "failed">("loading");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
+  const copy = copies[locale];
 
   const loadRemoteData = useCallback(async () => {
-    setSyncStatus("正在讀取最新資料…");
+    setSyncStatus("loading");
     try {
       const configResponse = await fetch(`${import.meta.env.BASE_URL}data-source.json`, { cache: "no-store" });
       if (!configResponse.ok) throw new Error("找不到 data-source.json");
@@ -153,7 +187,8 @@ export default function Home() {
       setDataSourceUrl(config.url || "");
       if (!config.url) {
         setData(defaultDashboardData);
-        setSyncStatus("尚未設定 Google Sheet，目前顯示內建快照");
+        setFirstExperienceLive(false);
+        setSyncStatus("noSource");
         return;
       }
 
@@ -168,17 +203,25 @@ export default function Home() {
         const parsed = JSON.parse(text) as unknown;
         const candidate = (parsed as { data?: unknown })?.data ?? parsed;
         if (!isDashboardData(candidate)) throw new Error("彙總 JSON 格式不正確");
-        nextData = candidate;
+        const hasFirstExperience = Array.isArray(candidate.coscupFirstHeard) && Array.isArray(candidate.ubuconFirstHeard);
+        nextData = {
+          ...candidate,
+          coscupFirstHeard: Array.isArray(candidate.coscupFirstHeard) ? candidate.coscupFirstHeard : defaultDashboardData.coscupFirstHeard,
+          ubuconFirstHeard: Array.isArray(candidate.ubuconFirstHeard) ? candidate.ubuconFirstHeard : defaultDashboardData.ubuconFirstHeard,
+        };
+        setFirstExperienceLive(hasFirstExperience);
       } else {
         nextData = aggregateCsv(text, config.url.split("/").pop() || "google-sheet.csv");
+        setFirstExperienceLive(true);
       }
 
       setData(nextData);
-      setSyncStatus("已同步 Google Sheet");
+      setSyncStatus("success");
     } catch (error) {
       console.error(error);
       setData((current) => current ?? defaultDashboardData);
-      setSyncStatus("同步失敗，目前顯示上一版資料");
+      setFirstExperienceLive(false);
+      setSyncStatus("failed");
     }
   }, []);
 
@@ -191,7 +234,19 @@ export default function Home() {
     };
   }, [loadRemoteData]);
 
-  if (!data) return <InitialLoading />;
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = copy.pageTitle;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", copy.pageDescription);
+    window.localStorage.setItem("coscup-survey-locale", locale);
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", locale);
+    window.history.replaceState(null, "", url);
+  }, [copy, locale]);
+
+  const localizedData = useMemo(() => data ? localizeDashboardData(data, locale) : null, [data, locale]);
+
+  if (!data || !localizedData) return <InitialLoading locale={locale} copy={copy} onLocaleChange={setLocale} />;
 
   const {
     ageGroups,
@@ -210,8 +265,10 @@ export default function Home() {
     tracks,
     tracksMore,
     motivations,
-  } = data;
-  const { summary, newsletters, aiOutlook } = data;
+    coscupFirstHeard,
+    ubuconFirstHeard,
+  } = localizedData;
+  const { summary, newsletters, aiOutlook } = localizedData;
   const percentage = (value: number, total: number) => `${total ? (value / total) * 100 : 0}%`;
   const endpoint = (format: "json" | "csv") => {
     if (!dataSourceUrl) return "";
@@ -222,22 +279,21 @@ export default function Home() {
   return (
     <main>
       <a className="skip-link" href="#content">
-        跳至主要內容
+        {copy.skip}
       </a>
 
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="回到頁首">
-          <span className="wordmark-kicker">2026</span>
-          <span>COSCUP × UbuCon Asia</span>
-        </a>
-        <nav aria-label="頁面導覽">
-          <a href="#pulse">報名節奏</a>
-          <a href="#community">社群輪廓</a>
-          <a href="#ai">AI 使用</a>
-          <a href="#agenda">議程興趣</a>
-          <a href="#open-data">開放資料</a>
-          <button className="nav-refresh" type="button" onClick={() => void loadRemoteData()}>重新同步</button>
-        </nav>
+        <Brand copy={copy} />
+        <div className="header-actions">
+          <nav aria-label={copy.nav.label}>
+            <a href="#pulse">{copy.nav.pulse}</a>
+            <a href="#community">{copy.nav.community}</a>
+            <a href="#ai">{copy.nav.ai}</a>
+            <a href="#agenda">{copy.nav.agenda}</a>
+            <a href="#open-data">{copy.nav.openData}</a>
+          </nav>
+          <LanguageSwitcher locale={locale} copy={copy} onChange={setLocale} />
+        </div>
       </header>
 
       <div id="top" className="hero-shell">
@@ -250,49 +306,49 @@ export default function Home() {
         <figure className="hero-visual">
           <img
             src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
-            alt="COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物"
+            alt={copy.imageAlt}
           />
         </figure>
 
         <section className="hero-copy" id="content">
           <div>
-            <p className="eyebrow">REGISTRATION SNAPSHOT · 2026</p>
+            <p className="eyebrow">{copy.hero.eyebrow}</p>
             <h1>
-              從 {summary.totalRegistrations} 筆報名，<br />
-              看見今年的<span>開源海岸線</span>
+              {copy.hero.beforeCount} {summary.totalRegistrations} {copy.hero.afterCount}<br />
+              {copy.hero.title}<span>{copy.hero.highlight}</span>
             </h1>
           </div>
           <div className="hero-intro">
             <p>
-              把行前問卷化成一張可閱讀的參與者地圖：大家如何走進開源、平常使用哪些工具，又最期待在會場遇見什麼。
+              {copy.hero.description}
             </p>
             <div className="update-chip">
-              <span className="status-dot" /> 資料更新至 {data.source.updatedAt}
-              <small>{syncStatus}</small>
+              <span className="status-dot" /> {interpolate(copy.sync.updated, { time: data.source.updatedAt })}
+              <small>{copy.sync[syncStatus]}</small>
             </div>
           </div>
         </section>
 
-        <section className="kpi-grid" aria-label="報名概況">
+        <section className="kpi-grid" aria-label={copy.hero.overview}>
           <article className="kpi-card kpi-card--blue">
-            <span>累積報名</span>
+            <span>{copy.kpi.total}</span>
             <strong>{summary.totalRegistrations}</strong>
-            <small>筆 preregistration</small>
+            <small>{copy.kpi.totalUnit}</small>
           </article>
           <article className="kpi-card kpi-card--green">
-            <span>目前有效</span>
+            <span>{copy.kpi.active}</span>
             <strong>{summary.activeRegistrations}</strong>
-            <small>扣除 {summary.cancelled} 筆取消</small>
+            <small>{interpolate(copy.kpi.activeNote, { count: summary.cancelled })}</small>
           </article>
           <article className="kpi-card kpi-card--coral">
-            <span>開放首分鐘</span>
+            <span>{copy.kpi.firstMinute}</span>
             <strong>{summary.within1Minute}</strong>
-            <small>筆快速湧入</small>
+            <small>{copy.kpi.firstMinuteNote}</small>
           </article>
           <article className="kpi-card kpi-card--yellow">
-            <span>開放 30 分鐘</span>
+            <span>{copy.kpi.thirtyMinutes}</span>
             <strong>{summary.within30Minutes}</strong>
-            <small>筆累積報名</small>
+            <small>{copy.kpi.thirtyMinutesNote}</small>
           </article>
         </section>
       </div>
@@ -304,9 +360,9 @@ export default function Home() {
         </div>
         <div className="section-inner">
           <SectionHeading
-            eyebrow="01 · REGISTRATION PULSE"
-            title="開放後的第一波浪潮"
-            description="7 月 17 日晚間 20:00 開放後，最密集的報名出現在起跑的第一分鐘。"
+            eyebrow={copy.pulse.eyebrow}
+            title={copy.pulse.title}
+            description={copy.pulse.description}
           />
 
           <div className="pulse-layout">
@@ -314,32 +370,32 @@ export default function Home() {
               <span className="feature-stat__spark">✦</span>
               <p>{summary.firstPaymentAt} → {summary.firstMinuteEnd}</p>
               <strong>{summary.within1Minute}</strong>
-              <h3>第一分鐘完成報名</h3>
-              <small>報名熱度在開放當下立即形成</small>
+              <h3>{copy.pulse.firstMinute}</h3>
+              <small>{copy.pulse.heat}</small>
             </article>
 
             <div className="timeline-card">
               <div className="timeline-row">
-                <span>1 分鐘</span>
+                <span>{copy.pulse.minute1}</span>
                 <div><i style={{ "--pulse": "35%" } as CSSProperties} /></div>
                 <strong>{summary.within1Minute}</strong>
               </div>
               <div className="timeline-row">
-                <span>5 分鐘</span>
+                <span>{copy.pulse.minute5}</span>
                 <div><i style={{ "--pulse": "43%" } as CSSProperties} /></div>
                 <strong>{summary.within5Minutes}</strong>
               </div>
               <div className="timeline-row">
-                <span>30 分鐘</span>
+                <span>{copy.pulse.minute30}</span>
                 <div><i style={{ "--pulse": "70%" } as CSSProperties} /></div>
                 <strong>{summary.within30Minutes}</strong>
               </div>
               <div className="timeline-row">
-                <span>2 小時</span>
+                <span>{copy.pulse.hour2}</span>
                 <div><i style={{ "--pulse": "100%" } as CSSProperties} /></div>
                 <strong>{summary.within2Hours}</strong>
               </div>
-              <p className="card-note">數字為各時間點的累積報名筆數。</p>
+              <p className="card-note">{copy.pulse.note}</p>
             </div>
           </div>
         </div>
@@ -348,17 +404,17 @@ export default function Home() {
       <section className="section" id="community">
         <div className="section-inner">
           <SectionHeading
-            eyebrow="02 · COMMUNITY PROFILE"
-            title="這片海岸，聚集了哪些人？"
-            description="25–44 歲是目前最顯著的年齡帶；開源身分則跨越使用、開發與推廣，彼此重疊。"
+            eyebrow={copy.community.eyebrow}
+            title={copy.community.title}
+            description={copy.community.description}
           />
 
           <div className="dashboard-grid dashboard-grid--community">
             <article className="chart-card chart-card--wide">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">年齡分布</p>
-                  <h3>25–44 歲形成主要區段</h3>
+                  <p className="card-kicker">{copy.community.ageKicker}</p>
+                  <h3>{copy.community.ageTitle}</h3>
                 </div>
                 <span className="shape-badge">AGE</span>
               </div>
@@ -368,8 +424,8 @@ export default function Home() {
             <article className="chart-card chart-card--dark">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">開源角色</p>
-                  <h3>不只一種身分</h3>
+                  <p className="card-kicker">{copy.community.roleKicker}</p>
+                  <h3>{copy.community.roleTitle}</h3>
                 </div>
                 <span className="shape-badge shape-badge--light">ROLE</span>
               </div>
@@ -385,38 +441,26 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <p className="card-note card-note--light">複選題，同一人可同時扮演多種角色。</p>
-            </article>
-
-            <article className="chart-card">
-              <div className="card-heading">
-                <div>
-                  <p className="card-kicker">開源入口</p>
-                  <h3>社群活動是最常見的起點</h3>
-                </div>
-              </div>
-              <BarList data={entryPaths} color="coral" compact />
-              <ExpandableNumbers label={`展開其餘 ${entryPathsMore.length} 種開源入口`} data={entryPathsMore} />
-              <p className="card-note">複選題，呈現被選擇的人次。</p>
+              <p className="card-note card-note--light">{copy.community.roleNote}</p>
             </article>
 
             <article className="chart-card tech-card">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">日常系統</p>
-                  <h3>跨平台，是開源人的日常</h3>
+                  <p className="card-kicker">{copy.community.osKicker}</p>
+                  <h3>{copy.community.osTitle}</h3>
                 </div>
               </div>
               <BarList data={operatingSystems} color="green" compact />
-              <ExpandableNumbers label={`展開其餘 ${operatingSystemsMore.length} 種作業系統`} data={operatingSystemsMore} />
-              <p className="card-note">複選題，呈現被選擇的人次。</p>
+              <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: operatingSystemsMore.length, unit: copy.community.osUnit })} data={operatingSystemsMore} />
+              <p className="card-note">{copy.common.multiSelect}</p>
             </article>
 
             <article className="chart-card chart-card--full software-card">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">開源軟體版圖</p>
-                  <h3>從瀏覽器一路延伸到前後端</h3>
+                  <p className="card-kicker">{copy.community.softwareKicker}</p>
+                  <h3>{copy.community.softwareTitle}</h3>
                 </div>
               </div>
               <div className="software-pills">
@@ -428,12 +472,42 @@ export default function Home() {
                 ))}
               </div>
               <div className="expander-group">
-                <ExpandableNumbers label={`展開其餘 ${openSourceSoftwareMore.length} 類開源軟體`} data={openSourceSoftwareMore} />
-                <ExpandableNumbers label="展開授權條款完整數字" data={licenses} />
+                <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: openSourceSoftwareMore.length, unit: copy.community.softwareUnit })} data={openSourceSoftwareMore} />
               </div>
-              <p className="card-note">複選題，呈現被選擇的人次。</p>
+              <p className="card-note">{copy.common.multiSelect}</p>
             </article>
           </div>
+
+          <section className="first-experience" aria-labelledby="first-experience-title">
+            <div className="first-experience__heading">
+              <p className="eyebrow">{copy.firstExperience.eyebrow}</p>
+              <h2 id="first-experience-title">{copy.firstExperience.title}</h2>
+              <p className="first-experience__description">{copy.firstExperience.description}</p>
+              {!firstExperienceLive && <p className="first-experience__snapshot">{copy.firstExperience.snapshot}</p>}
+            </div>
+            <div className="first-experience__grid">
+              <article className="chart-card first-experience__card">
+                <div className="card-heading"><div><p className="card-kicker">{copy.firstExperience.coscupKicker}</p><h3>{copy.firstExperience.coscupTitle}</h3></div></div>
+                <BarList data={coscupFirstHeard} color="green" />
+                <p className="card-note">{copy.firstExperience.yearNote}</p>
+              </article>
+              <article className="chart-card first-experience__card">
+                <div className="card-heading"><div><p className="card-kicker">{copy.firstExperience.ubuconKicker}</p><h3>{copy.firstExperience.ubuconTitle}</h3></div></div>
+                <BarList data={ubuconFirstHeard} color="yellow" />
+                <p className="card-note">{copy.firstExperience.yearNote}</p>
+              </article>
+              <article className="chart-card first-experience__card first-experience__card--wide">
+                <div className="card-heading"><div><p className="card-kicker">{copy.firstExperience.entryKicker}</p><h3>{copy.firstExperience.entryTitle}</h3></div></div>
+                <BarList data={[...entryPaths, ...entryPathsMore]} color="coral" />
+                <p className="card-note">{copy.common.multiSelect}</p>
+              </article>
+              <article className="chart-card first-experience__card first-experience__card--wide">
+                <div className="card-heading"><div><p className="card-kicker">{copy.firstExperience.licenseKicker}</p><h3>{copy.firstExperience.licenseTitle}</h3></div></div>
+                <BarList data={licenses} color="blue" />
+                <p className="card-note">{copy.common.multiSelect}</p>
+              </article>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -444,43 +518,43 @@ export default function Home() {
         </div>
         <div className="section-inner">
           <SectionHeading
-            eyebrow="03 · AI & OPEN SOURCE"
-            title="AI 已在工作與生活中成為日常"
-            description="工作情境以 Claude 居首；生活情境則由 ChatGPT、Gemini 與 Claude 形成主要組合。"
+            eyebrow={copy.ai.eyebrow}
+            title={copy.ai.title}
+            description={copy.ai.description}
           />
 
           <div className="ai-grid">
             <article className="chart-card ai-card ai-card--work">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">工作中使用</p>
-                  <h3>{workAI[0]?.label || "AI 工具"} 位居首位</h3>
+                  <p className="card-kicker">{copy.ai.workKicker}</p>
+                  <h3>{interpolate(copy.ai.workTop, { tool: workAI[0]?.label || copy.common.aiTool })}</h3>
                 </div>
                 <span className="context-chip">WORK</span>
               </div>
               <BarList data={workAI} color="coral" />
-              <ExpandableNumbers label={`展開其餘 ${workAIMore.length} 種工作 AI`} data={workAIMore} />
+              <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: workAIMore.length, unit: copy.ai.workUnit })} data={workAIMore} />
             </article>
 
             <article className="chart-card ai-card ai-card--daily">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">生活中使用</p>
-                  <h3>{dailyAI[0]?.label || "AI 工具"} 使用人次最高</h3>
+                  <p className="card-kicker">{copy.ai.dailyKicker}</p>
+                  <h3>{interpolate(copy.ai.dailyTop, { tool: dailyAI[0]?.label || copy.common.aiTool })}</h3>
                 </div>
                 <span className="context-chip context-chip--blue">LIFE</span>
               </div>
               <BarList data={dailyAI} color="blue" />
-              <ExpandableNumbers label={`展開其餘 ${dailyAIMore.length} 種生活 AI`} data={dailyAIMore} />
-              <p className="card-note">複選題，呈現被選擇的人次。</p>
+              <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: dailyAIMore.length, unit: copy.ai.dailyUnit })} data={dailyAIMore} />
+              <p className="card-note">{copy.common.multiSelect}</p>
             </article>
           </div>
 
           <article className="outlook-panel">
             <div className="outlook-copy">
-              <p className="card-kicker">AI 會殺死開源，還是開啟新篇章？</p>
-              <h3>多數聲音指向「共生」與「更重要」</h3>
-              <p>相較於零和競爭，參與者更常把 AI 與開源視為可以相互推進的力量。</p>
+              <p className="card-kicker">{copy.ai.outlookKicker}</p>
+              <h3>{copy.ai.outlookTitle}</h3>
+              <p>{copy.ai.outlookDescription}</p>
             </div>
             <div className="outlook-stats">
               {aiOutlook.slice(0, 3).map((item) => (
@@ -490,7 +564,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <p className="card-note card-note--light">複選題，呈現被選擇的人次。</p>
+            <p className="card-note card-note--light">{copy.common.multiSelect}</p>
           </article>
         </div>
       </section>
@@ -498,30 +572,30 @@ export default function Home() {
       <section className="section" id="agenda">
         <div className="section-inner">
           <SectionHeading
-            eyebrow="04 · WHAT PEOPLE WANT"
-            title="大家想在會場帶走什麼？"
-            description="交流、技術與國際新知是最主要的期待；議程興趣則從主議程一路展開至系統、AI 治理與在地化。"
+            eyebrow={copy.agenda.eyebrow}
+            title={copy.agenda.title}
+            description={copy.agenda.description}
           />
 
           <div className="dashboard-grid dashboard-grid--agenda">
             <article className="chart-card chart-card--wide track-card">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">議程興趣排行</p>
-                  <h3>主議程軌領先，多元社群緊隨</h3>
+                  <p className="card-kicker">{copy.agenda.trackKicker}</p>
+                  <h3>{copy.agenda.trackTitle}</h3>
                 </div>
                 <span className="shape-badge shape-badge--pink">TOP 8</span>
               </div>
               <BarList data={tracks} color="pink" />
-              <ExpandableNumbers label={`展開其餘 ${tracksMore.length} 條議程軌`} data={tracksMore} />
-              <p className="card-note">複選題，呈現被選擇的人次。</p>
+              <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: tracksMore.length, unit: copy.agenda.trackUnit })} data={tracksMore} />
+              <p className="card-note">{copy.common.multiSelect}</p>
             </article>
 
             <article className="chart-card motivation-card">
               <div className="card-heading">
                 <div>
-                  <p className="card-kicker">參與期待</p>
-                  <h3>人與知識，都是會場主角</h3>
+                  <p className="card-kicker">{copy.agenda.motivationKicker}</p>
+                  <h3>{copy.agenda.motivationTitle}</h3>
                 </div>
               </div>
               <div className="motivation-grid">
@@ -538,16 +612,16 @@ export default function Home() {
           <article className="newsletter-panel">
             <div>
               <p className="card-kicker">NEWSLETTER</p>
-              <h3>會後，還想繼續保持連結嗎？</h3>
-              <p>電子報意願顯示，活動之外的長期內容與社群聯繫仍有明確需求。</p>
+              <h3>{copy.newsletter.title}</h3>
+              <p>{copy.newsletter.description}</p>
             </div>
             <div className="newsletter-bars">
               <div className="newsletter-row">
                 <div className="newsletter-title">
-                  <strong>COSCUP 電子報</strong>
-                  <span>訂閱 {newsletters.coscup.subscribe} · 僅收行前／會後通知 {newsletters.coscup.eventOnly} · 不訂閱 {newsletters.coscup.none}</span>
+                  <strong>{copy.newsletter.coscup}</strong>
+                  <span>{copy.newsletter.subscribe} {newsletters.coscup.subscribe} · {copy.newsletter.eventOnly} {newsletters.coscup.eventOnly} · {copy.newsletter.none} {newsletters.coscup.none}</span>
                 </div>
-                <div className="stacked-bar" aria-label={`COSCUP 電子報：訂閱 ${newsletters.coscup.subscribe}，僅收活動通知 ${newsletters.coscup.eventOnly}，不訂閱 ${newsletters.coscup.none}`}>
+                <div className="stacked-bar" aria-label={`${copy.newsletter.coscup}: ${copy.newsletter.subscribe} ${newsletters.coscup.subscribe}, ${copy.newsletter.eventOnly} ${newsletters.coscup.eventOnly}, ${copy.newsletter.none} ${newsletters.coscup.none}`}>
                   <span className="stacked-bar__green" style={{ width: percentage(newsletters.coscup.subscribe, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
                   <span className="stacked-bar__yellow" style={{ width: percentage(newsletters.coscup.eventOnly, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
                   <span className="stacked-bar__neutral" style={{ width: percentage(newsletters.coscup.none, newsletters.coscup.subscribe + newsletters.coscup.eventOnly + newsletters.coscup.none) }} />
@@ -555,20 +629,20 @@ export default function Home() {
               </div>
               <div className="newsletter-row">
                 <div className="newsletter-title">
-                  <strong>OCF 電子報</strong>
-                  <span>訂閱 {newsletters.ocf.subscribe} · 已訂閱 {newsletters.ocf.already} · 不訂閱 {newsletters.ocf.none}</span>
+                  <strong>{copy.newsletter.ocf}</strong>
+                  <span>{copy.newsletter.subscribe} {newsletters.ocf.subscribe} · {copy.newsletter.already} {newsletters.ocf.already} · {copy.newsletter.none} {newsletters.ocf.none}</span>
                 </div>
-                <div className="stacked-bar" aria-label={`OCF 電子報：訂閱 ${newsletters.ocf.subscribe}，已訂閱 ${newsletters.ocf.already}，不訂閱 ${newsletters.ocf.none}`}>
+                <div className="stacked-bar" aria-label={`${copy.newsletter.ocf}: ${copy.newsletter.subscribe} ${newsletters.ocf.subscribe}, ${copy.newsletter.already} ${newsletters.ocf.already}, ${copy.newsletter.none} ${newsletters.ocf.none}`}>
                   <span className="stacked-bar__green" style={{ width: percentage(newsletters.ocf.subscribe, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
                   <span className="stacked-bar__blue" style={{ width: percentage(newsletters.ocf.already, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
                   <span className="stacked-bar__neutral" style={{ width: percentage(newsletters.ocf.none, newsletters.ocf.subscribe + newsletters.ocf.already + newsletters.ocf.none) }} />
                 </div>
               </div>
               <div className="legend">
-                <LegendItem color="green">願意訂閱</LegendItem>
-                <LegendItem color="blue">已訂閱</LegendItem>
-                <LegendItem color="yellow">僅收活動通知</LegendItem>
-                <LegendItem color="neutral">不訂閱</LegendItem>
+                <LegendItem color="green">{copy.newsletter.subscribe}</LegendItem>
+                <LegendItem color="blue">{copy.newsletter.already}</LegendItem>
+                <LegendItem color="yellow">{copy.newsletter.eventOnly}</LegendItem>
+                <LegendItem color="neutral">{copy.newsletter.none}</LegendItem>
               </div>
             </div>
           </article>
@@ -578,33 +652,30 @@ export default function Home() {
       <section className="section section--open-data" id="open-data">
         <div className="open-data-shell">
           <div className="open-data-copy">
-            <p className="eyebrow">05 · OPEN DATA</p>
-            <h2>把數據帶走，<br />做出你的觀察。</h2>
-            <p>
-              我們提供與本頁一致的彙總統計，歡迎社群下載、介接與延伸分析。
-              開放資料不包含逐筆回覆或可識別個人的資料。
-            </p>
+            <p className="eyebrow">{copy.openData.eyebrow}</p>
+            <h2>{copy.openData.title.split("\n").map((line, index) => <span key={line}>{index ? <br /> : null}{line}</span>)}</h2>
+            <p>{copy.openData.description}</p>
           </div>
 
           <div className="open-data-formats">
             <article className="format-card format-card--json">
               <span className="format-badge">JSON</span>
-              <h3>介接用 API</h3>
-              <p>適合程式、視覺化與自動分析流程。</p>
-              {dataSourceUrl ? <a href={endpoint("json")} target="_blank" rel="noreferrer">開啟 JSON ↗</a> : <span className="format-pending">等待設定資料網址</span>}
+              <h3>{copy.openData.jsonTitle}</h3>
+              <p>{copy.openData.jsonDescription}</p>
+              {dataSourceUrl ? <a href={endpoint("json")} target="_blank" rel="noreferrer">{copy.openData.jsonAction}</a> : <span className="format-pending">{copy.openData.pending}</span>}
             </article>
             <article className="format-card format-card--csv">
               <span className="format-badge">CSV</span>
-              <h3>表格與分析工具</h3>
-              <p>將各圖表統計整理為長表，可直接匯入。</p>
-              {dataSourceUrl ? <a href={endpoint("csv")} target="_blank" rel="noreferrer">下載 CSV ↗</a> : <span className="format-pending">等待設定資料網址</span>}
+              <h3>{copy.openData.csvTitle}</h3>
+              <p>{copy.openData.csvDescription}</p>
+              {dataSourceUrl ? <a href={endpoint("csv")} target="_blank" rel="noreferrer">{copy.openData.csvAction}</a> : <span className="format-pending">{copy.openData.pending}</span>}
             </article>
           </div>
 
           <div className="open-data-meta">
-            <span>最新資料：{data.source.updatedAt}</span>
-            <span>格式：UTF-8 · JSON / CSV</span>
-            <span>粒度：彙總統計</span>
+            <span>{interpolate(copy.openData.latest, { time: data.source.updatedAt })}</span>
+            <span>{copy.openData.format}</span>
+            <span>{copy.openData.granularity}</span>
           </div>
         </div>
       </section>
@@ -614,8 +685,8 @@ export default function Home() {
           <span>✦</span>
           <strong>COSCUP × UbuCon Asia 2026</strong>
         </div>
-        <p>資料來源：活動預先報名資料，統計截止 {data.source.updatedAt}。複選題以人次計算。</p>
-        <a href="#top">回到頁首 ↑</a>
+        <p>{interpolate(copy.footer.source, { time: data.source.updatedAt })}</p>
+        <a href="#top">{copy.footer.top}</a>
       </footer>
     </main>
   );

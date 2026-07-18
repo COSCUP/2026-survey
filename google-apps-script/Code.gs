@@ -14,6 +14,8 @@ const COLUMN_HINTS = {
   payment: "付款時間",
   cancelled: "取消時間",
   age: "你的年齡",
+  coscupFirstHeard: "第一次聽到 COSCUP 是哪一年",
+  ubuconFirstHeard: "第一次聽到 UbuCon Asia 是哪一年",
   entry: "最開始透過什麼管道接觸開放原始碼",
   roles: "開放原始碼運動中扮演什麼角色",
   os: "平常使用的作業系統",
@@ -84,6 +86,8 @@ function toCsv_(data) {
   Object.keys(summaryLabels).forEach((key) => add("summary", summaryLabels[key], data.summary[key], ""));
 
   const datasets = {
+    coscup_first_heard: data.coscupFirstHeard,
+    ubucon_first_heard: data.ubuconFirstHeard,
     age_groups: data.ageGroups,
     open_source_roles: data.openSourceRoles,
     entry_paths: data.entryPaths.concat(data.entryPathsMore),
@@ -145,6 +149,8 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
       within1Minute: cumulative(1), within5Minutes: cumulative(5), within30Minutes: cumulative(30), within2Hours: cumulative(120),
     },
     ageGroups: countSelections_(rows, columns.age),
+    coscupFirstHeard: countFirstHeard_(rows, columns.coscupFirstHeard, "coscup"),
+    ubuconFirstHeard: countFirstHeard_(rows, columns.ubuconFirstHeard, "ubucon"),
     openSourceRoles: countSelections_(rows, columns.roles),
     entryPaths: entry[0], entryPathsMore: entry[1],
     operatingSystems: os[0], operatingSystemsMore: os[1],
@@ -157,6 +163,45 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
       ocf: { subscribe: ocf.subscribe, already: ocf.already, none: ocf.none },
     },
   };
+}
+
+function countFirstHeard_(rows, column, eventName) {
+  if (eventName === "ubucon") {
+    const counts = { current: 0, earlier: 0, unclear: 0 };
+    rows.forEach((row) => {
+      const value = String(row[column] || "").trim();
+      if (!value) return;
+      const match = value.match(/^(20\d{2})$/);
+      if (!match) counts.unclear += 1;
+      else if (Number(match[1]) === 2026) counts.current += 1;
+      else if (Number(match[1]) >= 2000 && Number(match[1]) < 2026) counts.earlier += 1;
+      else counts.unclear += 1;
+    });
+    return [
+      { label: "2026 首次聽聞", value: counts.current },
+      { label: "2025 以前已聽聞", value: counts.earlier },
+      { label: "未聽過／無法判定", value: counts.unclear },
+    ];
+  }
+
+  const buckets = [
+    { label: "2006–2012", from: 2006, to: 2012, value: 0 },
+    { label: "2013–2017", from: 2013, to: 2017, value: 0 },
+    { label: "2018–2022", from: 2018, to: 2022, value: 0 },
+    { label: "2023–2025", from: 2023, to: 2025, value: 0 },
+    { label: "2026", from: 2026, to: 2026, value: 0 },
+  ];
+  let unclear = 0;
+  rows.forEach((row) => {
+    const value = String(row[column] || "").trim();
+    if (!value) return;
+    const match = value.match(/^(20\d{2})$/);
+    const year = match ? Number(match[1]) : NaN;
+    const bucket = buckets.find((candidate) => year >= candidate.from && year <= candidate.to);
+    if (bucket) bucket.value += 1;
+    else unclear += 1;
+  });
+  return buckets.map(({ label, value }) => ({ label, value })).concat([{ label: "無法判定", value: unclear }]);
 }
 
 function findColumn_(headers, hint) {

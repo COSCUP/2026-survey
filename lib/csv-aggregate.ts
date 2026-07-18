@@ -6,6 +6,8 @@ const columnHints = {
   payment: "付款時間",
   cancelled: "取消時間",
   age: "你的年齡",
+  coscupFirstHeard: "第一次聽到COSCUP是哪一年",
+  ubuconFirstHeard: "第一次聽到UbuConAsia是哪一年",
   entry: "最開始透過什麼管道接觸開放原始碼",
   roles: "開放原始碼運動中扮演什麼角色",
   os: "平常使用的作業系統",
@@ -114,6 +116,45 @@ function splitTop(data: BarDatum[], size: number): [BarDatum[], BarDatum[]] {
   return [data.slice(0, size), data.slice(size)];
 }
 
+function countFirstHeard(rows: CsvRow[], column: string, event: "coscup" | "ubucon"): BarDatum[] {
+  if (event === "ubucon") {
+    const counts = { current: 0, earlier: 0, unclear: 0 };
+    for (const row of rows) {
+      const value = row[column]?.trim();
+      if (!value) continue;
+      const match = value.match(/^(20\d{2})$/);
+      if (!match) counts.unclear += 1;
+      else if (Number(match[1]) === 2026) counts.current += 1;
+      else if (Number(match[1]) >= 2000 && Number(match[1]) < 2026) counts.earlier += 1;
+      else counts.unclear += 1;
+    }
+    return [
+      { label: "2026 首次聽聞", value: counts.current },
+      { label: "2025 以前已聽聞", value: counts.earlier },
+      { label: "未聽過／無法判定", value: counts.unclear },
+    ];
+  }
+
+  const buckets = [
+    { label: "2006–2012", from: 2006, to: 2012, value: 0 },
+    { label: "2013–2017", from: 2013, to: 2017, value: 0 },
+    { label: "2018–2022", from: 2018, to: 2022, value: 0 },
+    { label: "2023–2025", from: 2023, to: 2025, value: 0 },
+    { label: "2026", from: 2026, to: 2026, value: 0 },
+  ];
+  let unclear = 0;
+  for (const row of rows) {
+    const value = row[column]?.trim();
+    if (!value) continue;
+    const match = value.match(/^(20\d{2})$/);
+    const year = match ? Number(match[1]) : NaN;
+    const bucket = buckets.find((candidate) => year >= candidate.from && year <= candidate.to);
+    if (bucket) bucket.value += 1;
+    else unclear += 1;
+  }
+  return [...buckets.map(({ label, value }) => ({ label, value })), { label: "無法判定", value: unclear }];
+}
+
 function parsePayment(value: string): Date | null {
   const match = value.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
   if (!match) return null;
@@ -178,6 +219,8 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
       within1Minute: cumulative(1), within5Minutes: cumulative(5), within30Minutes: cumulative(30), within2Hours: cumulative(120),
     },
     ageGroups: countSelections(rows, columns.age),
+    coscupFirstHeard: countFirstHeard(rows, columns.coscupFirstHeard, "coscup"),
+    ubuconFirstHeard: countFirstHeard(rows, columns.ubuconFirstHeard, "ubucon"),
     openSourceRoles: countSelections(rows, columns.roles),
     entryPaths, entryPathsMore, operatingSystems, operatingSystemsMore,
     openSourceSoftware, openSourceSoftwareMore,
