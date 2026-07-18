@@ -18,6 +18,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /data-source\.json/);
   assert.match(page, /setInterval/);
   assert.match(page, /aggregateCsv/);
+  assert.match(page, /useState<DashboardData \| null>\(null\)/);
+  assert.match(page, /不顯示過期快照/);
+  assert.doesNotMatch(page, /useState<DashboardData>\(defaultDashboardData\)/);
   const dataSource = JSON.parse(config);
   assert.equal(dataSource.format, "json");
   assert.match(dataSource.url, /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/);

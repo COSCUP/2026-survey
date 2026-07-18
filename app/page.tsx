@@ -94,8 +94,53 @@ function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] })
   );
 }
 
+function InitialLoading() {
+  return (
+    <main className="initial-loading" aria-busy="true">
+      <header className="site-header">
+        <a className="wordmark" href="#top" aria-label="回到頁首">
+          <span className="wordmark-kicker">2026</span>
+          <span>COSCUP × UbuCon Asia</span>
+        </a>
+      </header>
+
+      <div id="top" className="hero-shell hero-shell--loading">
+        <div className="hero-doodles" aria-hidden="true">
+          <span className="doodle doodle--loop" />
+          <span className="doodle doodle--dash" />
+          <span className="doodle doodle--note">♪</span>
+          <span className="doodle doodle--spark">✦</span>
+        </div>
+        <figure className="hero-visual">
+          <img
+            src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
+            alt="COSCUP 2026 與 UbuCon Asia 主視覺：臺灣島、海洋、夏日小吃與吉祥物"
+          />
+        </figure>
+
+        <section className="hero-copy loading-copy">
+          <div>
+            <p className="eyebrow">LIVE REGISTRATION DATA · 2026</p>
+            <h1>正在讀取最新報名資料</h1>
+          </div>
+          <div className="hero-intro">
+            <p>同步完成後將直接呈現 Google Sheet 的最新數字。</p>
+            <div className="update-chip update-chip--loading">
+              <span className="loading-pulse" aria-hidden="true" />
+              <div>
+                <strong>即時同步中</strong>
+                <small>不顯示過期快照</small>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export default function Home() {
-  const [data, setData] = useState<DashboardData>(defaultDashboardData);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [syncStatus, setSyncStatus] = useState("正在讀取最新資料…");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
 
@@ -107,6 +152,7 @@ export default function Home() {
       const config = await configResponse.json() as DataSourceConfig;
       setDataSourceUrl(config.url || "");
       if (!config.url) {
+        setData(defaultDashboardData);
         setSyncStatus("尚未設定 Google Sheet，目前顯示內建快照");
         return;
       }
@@ -131,6 +177,7 @@ export default function Home() {
       setSyncStatus("已同步 Google Sheet");
     } catch (error) {
       console.error(error);
+      setData((current) => current ?? defaultDashboardData);
       setSyncStatus("同步失敗，目前顯示上一版資料");
     }
   }, []);
@@ -143,6 +190,8 @@ export default function Home() {
       window.clearInterval(timer);
     };
   }, [loadRemoteData]);
+
+  if (!data) return <InitialLoading />;
 
   const {
     ageGroups,
