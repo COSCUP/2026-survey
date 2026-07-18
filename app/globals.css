@@ -137,7 +137,7 @@ main {
 
 .hero-shell {
   position: relative;
-  padding: clamp(14px, 2.5vw, 36px) clamp(20px, 5vw, 80px) clamp(38px, 5vw, 72px);
+  padding: clamp(14px, 2.5vw, 36px) clamp(12px, 2vw, 32px) clamp(38px, 5vw, 72px);
   border-bottom: 3px solid var(--ink);
   background: var(--green);
 }
@@ -220,7 +220,7 @@ main {
 .hero-visual {
   position: relative;
   z-index: 3;
-  max-width: 1280px;
+  max-width: 1600px;
   margin: 0 auto;
   overflow: hidden;
   border: 3px solid var(--ink);
