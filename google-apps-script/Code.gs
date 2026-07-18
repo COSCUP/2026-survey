@@ -7,45 +7,69 @@
  * 4. Paste the /exec URL into public/data-source.json.
  *
  * The endpoint returns aggregate counts only. It never returns individual rows.
+ * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
+const SCHEMA_VERSION = "2026-07-19-v2";
 
 const COLUMN_HINTS = {
-  payment: "付款時間",
-  cancelled: "取消時間",
-  age: "你的年齡",
-  coscupFirstHeard: "第一次聽到 COSCUP 是哪一年",
-  ubuconFirstHeard: "第一次聽到 UbuCon Asia 是哪一年",
-  entry: "最開始透過什麼管道接觸開放原始碼",
-  roles: "開放原始碼運動中扮演什麼角色",
-  os: "平常使用的作業系統",
-  software: "經常使用哪一種開源軟體",
-  license: "授權條款釋出你的作品",
-  workAI: "工作中會使用到的AI",
-  dailyAI: "生活中會使用到的AI",
-  outlook: "AI 會殺死開放原始碼",
-  motivations: "COSCUP 大會中得到什麼收穫",
-  tracks: "議程軌有興趣",
-  coscupNewsletter: "COSCUP 電子報",
-  ocfNewsletter: "OCF 電子報",
+  payment: ["付款時間"],
+  cancelled: ["取消時間"],
+  age: ["你的年齡", "field_radio_1005509"],
+  coscupFirstHeard: ["第一次聽到 COSCUP 是哪一年", "field_text_1005518"],
+  ubuconFirstHeard: ["第一次聽到 UbuCon Asia 是哪一年", "field_text_1005519"],
+  entry: ["最開始透過什麼管道接觸開放原始碼", "field_checkbox_1005521"],
+  roles: ["開放原始碼運動中扮演什麼角色", "field_checkbox_1005522"],
+  os: ["平常使用的作業系統", "field_checkbox_1005523"],
+  software: ["經常使用哪一種開源軟體", "field_checkbox_1005524"],
+  license: ["授權條款釋出你的作品", "field_checkbox_1005525"],
+  workAI: ["工作中會使用到哪些 AI", "工作中會使用到的AI", "field_checkbox_1005616"],
+  dailyAI: ["生活中會使用到的AI", "field_checkbox_1005527"],
+  outlook: ["AI 會殺死開放原始碼", "field_checkbox_1005528"],
+  motivations: ["COSCUP 大會中得到什麼收穫", "field_radio_1005529"],
+  tracks: ["議程軌有興趣", "field_checkbox_1005530"],
+  coscupNewsletter: ["COSCUP 電子報", "field_radio_1005537"],
+  ocfNewsletter: ["OCF 電子報", "field_radio_1005538"],
 };
 
 const LABEL_RULES = [
   ["25-34 years old", "25–34 歲"], ["35-44 years old", "35–44 歲"],
   ["19-24 years old", "19–24 歲"], ["45-54 years old", "45–54 歲"],
+  ["55-64 years old", "55–64 歲"], ["65 years or older", "65 歲以上"],
   ["Under 18", "18 歲以下"], ["Prefer not to say", "不方便告知"],
   ["Users", "使用者", "Users"], ["Coders", "開發者", "Coders"], ["Promoters", "推廣者", "Promoters"],
   ["Joining in an event", "參加開源社群活動"], ["Taking part in Project", "實際參與開源專案"],
   ["Social Media", "社群媒體"], ["Forums", "網路論壇"], ["Friends and family", "親友介紹"],
   ["School clubs", "學校社團"], ["Work needs", "工作需求／公司同事"],
   ["Events ", "活動／講座"], ["Teachers", "學校老師／教授"],
-  ["Newsletter", "電子報"], ["News, Newspapers", "新聞、報章雜誌"],
+  ["Newsletter", "電子報"], ["News, Newspapers", "新聞、報章雜誌"], ["Official documants", "公文書函"],
   ["CentOS", "CentOS（含 Stream／Rocky Linux）"],
+  ["Redhat Linux", "Red Hat Linux"], ["alpine linux", "Alpine Linux"],
   ["Web browser", "開源瀏覽器"], ["Web servers", "Web 伺服器"],
   ["Back-end", "後端開發框架"], ["Front-end", "前端開發框架"],
   ["Communication software", "通訊軟體"], ["Office suite", "辦公室軟體"],
   ["Illustration software", "繪圖軟體", "Blender、GIMP、Inkscape、Krita 等"],
+  ["3D modeling and hardware design software", "3D 建模與硬體設計軟體"],
+  ["Audio, video and streaming software", "影音製作與串流軟體"],
+  ["Knowledge management and note-taking software", "知識管理與筆記軟體"],
+  ["Project management and collaboration software", "專案管理與協作軟體"],
+  ["Content management and publishing software", "內容管理與出版軟體"],
+  ["Databases", "資料庫軟體"], ["Version control and code collaboration software", "版本控制與程式碼協作軟體"],
+  ["Development tools and code editors", "開發工具與程式碼編輯器"], ["Operating systems", "作業系統"],
+  ["Containers and orchestration software", "容器與編排軟體"],
+  ["Cloud infrastructure and automation tools", "雲端基礎設施與自動化工具"],
+  ["System administration and monitoring software", "系統管理與監控軟體"],
+  ["Cybersecurity and privacy software", "資安與隱私軟體"], ["Networking and VPN software", "網路與 VPN 軟體"],
+  ["Data analysis and visualization software", "資料分析與視覺化軟體"],
+  ["Geographic information and mapping software", "地理資訊與地圖軟體"],
+  ["Artificial intelligence and machine learning software", "人工智慧與機器學習軟體"],
+  ["Civic technology and community platforms", "公民科技與社群平台"],
+  ["Other open source software", "其他開源軟體"],
+  ["I am not sure whether the software", "不確定使用的軟體是否為開源"],
   ["Creative Commons", "Creative Commons", "創用 CC"],
+  ["Other open-source", "其他開源模型"], ["Other open-weight", "其他開放權重模型"],
+  ["I use open models but do not know their names", "有使用開放模型，但不確定名稱"],
+  ["Locally hosted or self-hosted AI models", "本機或自行架設的 AI 模型"],
   ["Main Session Track", "主議程軌", "Main Session Track"],
   ["綜合議程", "綜合議程", "各種開源議題"], ["AI開放治理", "AI 開放治理"],
   ["JSDC X", "JSDC × DevFrontier"], ["Open LLM End User", "Open LLM End User", "開源模型應用"],
@@ -78,7 +102,7 @@ function doGet(event) {
 }
 
 function assertPublicAggregate_(data) {
-  const allowedAges = ["25–34 歲", "35–44 歲", "19–24 歲", "45–54 歲", "18 歲以下", "不方便告知"];
+  const allowedAges = ["25–34 歲", "35–44 歲", "19–24 歲", "45–54 歲", "55–64 歲", "65 歲以上", "18 歲以下", "不方便告知"];
   const ageLabels = data.ageGroups.map((item) => item.label);
   if (!ageLabels.length || ageLabels.some((label) => !allowedAges.includes(label))) {
     throw new Error("年齡欄位對應異常，為避免公開個人資料已停止輸出。請檢查 COLUMN_HINTS 與工作表標題列。");
@@ -153,6 +177,7 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
     source: {
       name: `${spreadsheetName} / ${sheetName}`,
       updatedAt: Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "Asia/Taipei", "yyyy.MM.dd HH:mm"),
+      schemaVersion: SCHEMA_VERSION,
     },
     summary: {
       totalRegistrations: rows.length,
@@ -217,10 +242,14 @@ function countFirstHeard_(rows, column, eventName) {
   return buckets.map(({ label, value }) => ({ label, value })).concat([{ label: "無法判定", value: unclear }]);
 }
 
-function findColumn_(headers, hint) {
-  const compactHint = hint.replace(/\s/g, "");
-  const index = headers.findIndex((header) => String(header).replace(/\s/g, "").includes(compactHint));
-  if (index < 0) throw new Error(`缺少必要欄位：${hint}`);
+function findColumn_(headers, hints) {
+  const candidates = Array.isArray(hints) ? hints : [hints];
+  const compactHints = candidates.map((hint) => hint.replace(/\s/g, "").toLowerCase());
+  const index = headers.findIndex((header) => {
+    const compactHeader = String(header).replace(/\s/g, "").toLowerCase();
+    return compactHints.some((hint) => compactHeader.includes(hint));
+  });
+  if (index < 0) throw new Error(`缺少必要欄位：${candidates[0]}`);
   return index;
 }
 
@@ -236,7 +265,10 @@ function countSelections_(rows, column) {
 
 function splitSelections_(value) {
   return value.replace(/News,\s*Newspapers and magazines/gi, "News、Newspapers and magazines")
-    .split(/,\s*/).map((item) => item.replace("News、", "News, ").trim()).filter(Boolean);
+    .replace(/Audio,\s*video and streaming software/gi, "Audio、video and streaming software")
+    .split(/,\s*/)
+    .map((item) => item.replace("News、", "News, ").replace("Audio、", "Audio, ").trim())
+    .filter(Boolean);
 }
 
 function localized_(raw) {
