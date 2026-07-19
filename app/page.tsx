@@ -743,13 +743,13 @@ export default function Home() {
             </h1>
           </div>
           <div className="hero-intro">
-            <p>
-              {copy.hero.description}
-            </p>
             <a className="hero-registration-cta" href="https://s.coscup.org/preregistevent" target="_blank" rel="noreferrer">
               <span>{copy.hero.ctaKicker}</span>
               <strong>{copy.hero.ctaAction}</strong>
             </a>
+            <p>
+              {copy.hero.description}
+            </p>
           </div>
         </section>
 

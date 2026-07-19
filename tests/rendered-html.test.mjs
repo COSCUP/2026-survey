@@ -60,7 +60,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /rank-shift--/);
   assert.match(page, /RegistrationTimeline/);
   assert.match(page, /https:\/\/s\.coscup\.org\/preregistevent/);
-  assert.match(i18n, /KKTIX 預先登錄開放中/);
+  assert.match(i18n, /優先使用 KKTIX 重溫推票亭時光！/);
   assert.match(appsScript, /buildRegistrationTimeline_/);
   assert.match(i18n, /淺色細條為全體登錄者/);
   assert.match(i18n, /Release Early, Release Often/);
