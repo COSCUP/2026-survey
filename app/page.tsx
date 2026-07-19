@@ -179,6 +179,7 @@ function RegistrationTimeline({
   const futurePath = bins.slice(currentIndex).map((item, index) => `${index ? "L" : "M"}${xAt(currentIndex + index)} ${yAt(item)}`).join(" ");
   const labelIndexes = [...new Set([0, Math.round((bins.length - 1) * 0.33), Math.round((bins.length - 1) * 0.66), bins.length - 1])];
   const first = bins[0];
+  const populatedBins = bins.filter((item) => item.value > 0);
 
   return (
     <div className="registration-timeline">
@@ -217,7 +218,7 @@ function RegistrationTimeline({
           <strong aria-hidden="true">＋</strong>
         </summary>
         <div className="registration-timeline__numbers">
-          {bins.map((item) => <div className="registration-timeline__number" key={item.startAt}>
+          {populatedBins.map((item) => <div className="registration-timeline__number" key={item.startAt}>
             <span>{timelineDateLabel(item.startAt, locale)} · {item.slot}</span>
             <strong>{interpolate(copy.pulse.timelineAddedValue, { count: item.value })}</strong>
             <small>{interpolate(copy.pulse.timelineCumulativeValue, { count: item.cumulative })}</small>
@@ -787,6 +788,29 @@ export default function Home() {
             title={copy.pulse.title}
             description={copy.pulse.description}
           />
+
+          <div className="kpi-grid early-pulse-grid" aria-label={copy.pulse.earlyTitle}>
+            <article className="kpi-card kpi-card--coral">
+              <span>{copy.pulse.minute1}</span>
+              <strong>{summary.within1Minute}</strong>
+              <small>{copy.pulse.earlyWindow}</small>
+            </article>
+            <article className="kpi-card kpi-card--yellow">
+              <span>{copy.pulse.minute5}</span>
+              <strong>{summary.within5Minutes}</strong>
+              <small>{copy.pulse.earlyWindow}</small>
+            </article>
+            <article className="kpi-card kpi-card--green">
+              <span>{copy.pulse.minute30}</span>
+              <strong>{summary.within30Minutes}</strong>
+              <small>{copy.pulse.earlyWindow}</small>
+            </article>
+            <article className="kpi-card kpi-card--blue">
+              <span>{copy.pulse.hour2}</span>
+              <strong>{summary.within2Hours}</strong>
+              <small>{copy.pulse.earlyWindow}</small>
+            </article>
+          </div>
 
           <RegistrationTimeline bins={summary.registrationTimeline ?? []} locale={locale} copy={copy} />
         </div>

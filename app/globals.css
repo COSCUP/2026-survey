@@ -466,6 +466,11 @@ main {
   color: #ffffff;
 }
 
+.early-pulse-grid {
+  max-width: none;
+  margin: 0 0 20px;
+}
+
 .section {
   position: relative;
   padding: clamp(76px, 9vw, 130px) clamp(20px, 5vw, 80px);
