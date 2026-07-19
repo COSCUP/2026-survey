@@ -45,7 +45,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
   assert.match(appsScript, /assertPublicAggregate_/);
-  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v3"/);
+  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v4"/);
   assert.match(appsScript, /function buildPublicRows_/);
   assert.match(appsScript, /function buildPersonas_/);
   assert.match(appsScript, /function importLatestKktixCsv/);
@@ -222,5 +222,30 @@ test("Apps Script supports the latest field keys and option labels", async () =>
       appendRows: [],
       updateRows: [{ sheetRow: 3, values: ["157378157", "Claude, Codex", ""] }],
     },
+  );
+
+  context.orderKeyHeaders = ["訂單編號", "付款時間", "公開回答"];
+  context.orderKeyExisting = [{ sheetRow: 2, row: ["157378157", "2026/07/17 20:00:15", ""] }];
+  context.orderKeyIncoming = [["157378157", "2026/07/19 20:00:15", "補上答案"]];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("planImportChanges_(orderKeyExisting, orderKeyIncoming, orderKeyHeaders)", context)),
+    {
+      appendRows: [],
+      updateRows: [{ sheetRow: 2, values: ["157378157", "2026/07/19 20:00:15", "補上答案"] }],
+    },
+  );
+
+  context.privateFreeHeaders = ["訂單編號", context.oldAiHeader, "取消時間"];
+  context.kktixPrivateHeaders = ["訂單編號", "姓名", "Email", context.newAiHeader, "取消時間"];
+  context.kktixPrivateRows = [["157378157", "Example Person", "person@example.com", "Claude", ""]];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("alignIncomingRows_(privateFreeHeaders, kktixPrivateHeaders, kktixPrivateRows)", context)),
+    [["157378157", "Claude", ""]],
+  );
+
+  context.unknownExtraHeaders = ["訂單編號", context.newAiHeader, "取消時間", "未預期的新欄位"];
+  assert.throws(
+    () => vm.runInContext("alignIncomingRows_(privateFreeHeaders, unknownExtraHeaders, kktixPrivateRows)", context),
+    /欄位不同/,
   );
 });

@@ -11,7 +11,7 @@
  * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
-const SCHEMA_VERSION = "2026-07-19-v3";
+const SCHEMA_VERSION = "2026-07-19-v4";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
 // Save each full KKTIX export into the Drive folder. The newest CSV is compared
@@ -39,6 +39,12 @@ const IMPORT_HEADER_ALIASES = {
     "field_checkbox_1005616",
   ],
 };
+
+// Some existing private Sheets were intentionally initialized without KKTIX's
+// Name and Email columns. Allow only these explicit extra CSV columns to be
+// ignored when the destination Sheet does not contain them. Every other schema
+// difference remains a hard error.
+const IMPORT_OPTIONAL_PRIVATE_HEADERS = ["姓名", "name", "email", "e-mail", "電子郵件"];
 
 const PUBLIC_EXCLUDED_HEADER_KEYWORDS = [
   "姓名", "email", "e-mail", "電子郵件", "身分證", "手機", "聯絡電話",
@@ -237,6 +243,7 @@ function importLatestKktixCsv_() {
   const incomingHeaders = collapsedSchema.headers;
   const incomingRows = collapsedSchema.rows;
   const importWidth = incomingHeaders.length;
+  let targetWidth = importWidth;
 
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
@@ -246,6 +253,7 @@ function importLatestKktixCsv_() {
     const existingValues = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getDisplayValues();
     const existingHeaders = existingValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
     const alignedIncomingRows = alignIncomingRows_(existingHeaders, incomingHeaders, incomingRows);
+    targetWidth = existingHeaders.length;
     const existingEntries = existingValues.slice(1)
       .map((row, index) => ({ row, sheetRow: index + 2 }))
       .filter((entry) => entry.row.some((cell) => String(cell).trim() !== ""));
@@ -261,12 +269,12 @@ function importLatestKktixCsv_() {
     initialRange.setValues([incomingHeaders].concat(incomingRows));
   }
 
-  if (changes.updateRows.length) writeImportUpdates_(sheet, changes.updateRows, importWidth);
+  if (changes.updateRows.length) writeImportUpdates_(sheet, changes.updateRows, targetWidth);
 
   if (status === "appended" || status === "updated-and-appended") {
     const startRow = sheet.getLastRow() + 1;
-    ensureSheetSize_(sheet, startRow + changes.appendRows.length - 1, importWidth);
-    const appendRange = sheet.getRange(startRow, 1, changes.appendRows.length, importWidth);
+    ensureSheetSize_(sheet, startRow + changes.appendRows.length - 1, targetWidth);
+    const appendRange = sheet.getRange(startRow, 1, changes.appendRows.length, targetWidth);
     appendRange.setNumberFormat("@");
     appendRange.setValues(changes.appendRows);
   }
@@ -302,8 +310,18 @@ function alignIncomingRows_(existingHeaders, incomingHeaders, incomingRows) {
   if (existingUnique.size !== existingHeaders.length) {
     throw new Error("「報名資料」含有重複的邏輯欄位，請先合併重複欄位後再匯入。");
   }
-  if (existingUnique.size !== incomingUnique.size || [...existingUnique].some((key) => !incomingUnique.has(key))) {
-    throw new Error("CSV 與「報名資料」的欄位不同。為避免資料錯位，已停止差異匯入，且未修改既有資料。");
+  const missingExisting = [...existingUnique].filter((key) => !incomingUnique.has(key));
+  const unsafeIncomingExtras = [...incomingUnique]
+    .filter((key) => !existingUnique.has(key))
+    .filter((key) => !(incomingGroups.get(key) || []).every((index) => isOptionalPrivateImportHeader_(incomingHeaders[index])));
+  if (missingExisting.length || unsafeIncomingExtras.length) {
+    const missingLabels = existingHeaders.filter((_, index) => missingExisting.includes(existingKeys[index]));
+    const extraLabels = unsafeIncomingExtras.flatMap((key) => (incomingGroups.get(key) || []).map((index) => incomingHeaders[index]));
+    const details = [
+      missingLabels.length ? `CSV 缺少：${missingLabels.join("、")}` : "",
+      extraLabels.length ? `CSV 多出：${extraLabels.join("、")}` : "",
+    ].filter(Boolean).join("；");
+    throw new Error(`CSV 與「報名資料」的欄位不同。為避免資料錯位，已停止差異匯入，且未修改既有資料。${details ? ` ${details}` : ""}`);
   }
 
   return incomingRows.map((row) => existingKeys.map((key) => {
@@ -312,6 +330,11 @@ function alignIncomingRows_(existingHeaders, incomingHeaders, incomingRows) {
     if (indexes.length !== 1) throw new Error(`CSV 欄位重複，無法安全對應：${key}`);
     return row[indexes[0]] || "";
   }));
+}
+
+function isOptionalPrivateImportHeader_(header) {
+  const normalized = normalizeImportHeader_(header);
+  return IMPORT_OPTIONAL_PRIVATE_HEADERS.some((alias) => normalized === normalizeImportHeader_(alias));
 }
 
 function collapseAliasedIncomingSchema_(headers, rows) {
@@ -438,8 +461,9 @@ function importRowKey_(row, config) {
   const value = (index) => index < 0 ? "" : normalizeImportKeyValue_(row[index]);
   const ticketId = value(config.ticketId);
   if (ticketId) return `ticket:${ticketId}`;
+  const orderId = value(config.orderId);
+  if (orderId) return `order:${orderId}`;
   const parts = [
-    value(config.orderId),
     value(config.email),
     value(config.name),
     normalizeImportTimestamp_(config.payment < 0 ? "" : row[config.payment]),
