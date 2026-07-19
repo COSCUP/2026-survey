@@ -749,12 +749,7 @@ export default function Home() {
             <a className="hero-registration-cta" href="https://s.coscup.org/preregistevent" target="_blank" rel="noreferrer">
               <span>{copy.hero.ctaKicker}</span>
               <strong>{copy.hero.ctaAction}</strong>
-              <small>{copy.hero.ctaNote}</small>
             </a>
-            <div className="update-chip">
-              <span className="status-dot" /> {interpolate(copy.sync.updated, { time: data.source.updatedAt })}
-              <small>{copy.sync[syncStatus]}</small>
-            </div>
           </div>
         </section>
 
@@ -780,6 +775,12 @@ export default function Home() {
             <small>{copy.kpi.thirtyMinutesNote}</small>
           </article>
         </section>
+        <div className="hero-sync-line" role="status">
+          <span className="status-dot" aria-hidden="true" />
+          <span>{interpolate(copy.sync.updated, { time: data.source.updatedAt })}</span>
+          <span aria-hidden="true">·</span>
+          <span>{copy.sync[syncStatus]}</span>
+        </div>
       </div>
 
       <section className="section section--blue" id="pulse">
