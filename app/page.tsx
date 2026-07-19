@@ -746,6 +746,11 @@ export default function Home() {
             <p>
               {copy.hero.description}
             </p>
+            <a className="hero-registration-cta" href="https://s.coscup.org/preregistevent" target="_blank" rel="noreferrer">
+              <span>{copy.hero.ctaKicker}</span>
+              <strong>{copy.hero.ctaAction}</strong>
+              <small>{copy.hero.ctaNote}</small>
+            </a>
             <div className="update-chip">
               <span className="status-dot" /> {interpolate(copy.sync.updated, { time: data.source.updatedAt })}
               <small>{copy.sync[syncStatus]}</small>

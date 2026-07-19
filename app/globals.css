@@ -340,6 +340,44 @@ main {
   line-height: 1.75;
 }
 
+.hero-registration-cta {
+  display: grid;
+  gap: 3px;
+  margin: 0 0 16px;
+  padding: 17px 20px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--coral);
+  box-shadow: 6px 7px 0 var(--ink);
+  color: var(--ink);
+  text-decoration: none;
+  transition: translate 180ms ease, box-shadow 180ms ease;
+}
+
+.hero-registration-cta:hover,
+.hero-registration-cta:focus-visible {
+  box-shadow: 3px 4px 0 var(--ink);
+  translate: 3px 3px;
+}
+
+.hero-registration-cta span {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.hero-registration-cta strong {
+  font-size: clamp(18px, 2vw, 25px);
+  line-height: 1.18;
+}
+
+.hero-registration-cta small {
+  color: #263036;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 .update-chip {
   display: inline-grid;
   align-items: center;
@@ -437,6 +475,12 @@ main {
 .kpi-card--green { background: var(--paper); }
 .kpi-card--coral { background: var(--coral); }
 .kpi-card--yellow { background: var(--yellow); }
+
+.kpi-card--green,
+.kpi-card--coral,
+.kpi-card--yellow {
+  color: var(--ink);
+}
 
 .kpi-card span,
 .kpi-card small {
