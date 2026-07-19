@@ -45,8 +45,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
   assert.match(appsScript, /assertPublicAggregate_/);
-  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v2"/);
+  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v3"/);
   assert.match(appsScript, /function buildPublicRows_/);
+  assert.match(appsScript, /function buildPersonas_/);
   assert.match(appsScript, /function importLatestKktixCsv/);
   assert.match(appsScript, /function installKktixImportTrigger/);
   assert.match(appsScript, /function planImportChanges_/);
@@ -54,6 +55,8 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(readme, /每 15 分鐘/);
   assert.match(readme, /更新＋新增、不刪除/);
   assert.match(readme, /view=raw&format=csv/);
+  assert.match(page, /PersonaPage/);
+  assert.match(page, /https:\/\/coscup\.org\/2026\/api\/session/);
   assert.doesNotMatch(page, /填答率/);
 });
 
@@ -96,6 +99,8 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.deepEqual(data.coscupFirstHeard.find((item) => item.label === "2023–2025"), { label: "2023–2025", value: 1 });
   assert.deepEqual(data.ubuconFirstHeard.find((item) => item.label === "2026 首次聽聞"), { label: "2026 首次聽聞", value: 1 });
   assert.equal(data.newsletters.ocf.already, 1);
+  assert.equal(data.personas?.roles.find((persona) => persona.id === "role:使用者")?.value, 1);
+  assert.equal(data.personas?.tracks.find((persona) => persona.id === "track:主議程軌")?.value, 1);
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
 });
 
@@ -187,6 +192,35 @@ test("Apps Script supports the latest field keys and option labels", async () =>
     {
       appendRows: [["", "", "2026/07/18 11:00:00", "2026-07-18T11:00:00+08:00", "同秒新增第二筆"]],
       updateRows: [],
+    },
+  );
+
+  context.oldAiHeader = "What kinds of AI do you use at work? 工作中會使用到的AI？";
+  context.newAiHeader = "What kinds of AI do you use at your work? 工作中會使用到哪些 AI？";
+  context.existingAliasHeaders = ["訂單編號", context.oldAiHeader, "取消時間"];
+  context.incomingAliasHeaders = ["訂單編號", context.newAiHeader, "取消時間"];
+  context.incomingAliasRows = [["42", "", "2026/07/19 12:00:00"]];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("alignIncomingRows_(existingAliasHeaders, incomingAliasHeaders, incomingAliasRows)", context)),
+    [["42", "", "2026/07/19 12:00:00"]],
+  );
+  context.existingAliasEntries = [{ sheetRow: 2, row: ["42", "Claude", ""] }];
+  context.alignedAliasRows = vm.runInContext("alignIncomingRows_(existingAliasHeaders, incomingAliasHeaders, incomingAliasRows)", context);
+  assert.deepEqual(
+    structuredClone(vm.runInContext("planImportChanges_(existingAliasEntries, alignedAliasRows, existingAliasHeaders)", context)),
+    {
+      appendRows: [],
+      updateRows: [{ sheetRow: 2, values: ["42", "Claude", "2026/07/19 12:00:00"] }],
+    },
+  );
+
+  context.initiallyBlankEntries = [{ sheetRow: 3, row: ["157378157", "", ""] }];
+  context.newAnswerRows = [["157378157", "Claude, Codex", ""]];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("planImportChanges_(initiallyBlankEntries, newAnswerRows, existingAliasHeaders)", context)),
+    {
+      appendRows: [],
+      updateRows: [{ sheetRow: 3, values: ["157378157", "Claude, Codex", ""] }],
     },
   );
 });

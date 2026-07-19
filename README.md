@@ -63,6 +63,28 @@ KKTIX 匯出檔視為「目前全部報名資料」的完整快照。Apps Script
 差異匯入採「更新＋新增、不刪除」：已存在報名會同步最新內容，新報名會附加，舊資料不會因為
 某次 CSV 缺少該列而消失。CSV 與 Sheet 的欄位或順序不同時，程式會停止匯入，避免資料落入錯誤欄位。
 
+匯入另有兩個資料保護規則：
+
+- `What kinds of AI do you use at your work? 工作中會使用到哪些 AI？` 與
+  `What kinds of AI do you use at work? 工作中會使用到的AI？` 視為同一題；即使 KKTIX 同時輸出
+  新舊欄位，也只會保留一個邏輯欄位，優先採用有答案的版本。
+- 已存在的非空白儲存格不會被新版 CSV 的空白覆蓋；原先空白的報名（例如問卷尚未開啟時建立）
+  之後補上答案時，仍會依訂單／票券識別碼更新到原列。
+
+## Persona 深度檢視
+
+首頁的開源角色與議程興趣區塊提供 Persona 入口。Persona 使用同一份最新報名資料，分別重算年齡、
+開源角色、開源入口、作業系統、授權、AI 與參與期待等分布，不會顯示個別報名者。
+
+議程軌 Persona 會讀取 COSCUP 官方 `https://coscup.org/2026/api/session`，將報名問卷中的議程軌名稱
+對應至 `https://coscup.org/2026/track/{track-id}/`；找不到對應時才退回完整議程表。
+
+Persona 採 query URL，適合 GitHub Pages 直接分享與重新整理，例如：
+
+```text
+https://coscup.org/2026-survey/?persona=role%3A%E9%96%8B%E7%99%BC%E8%80%85
+```
+
 ## 網站的開放資料介接
 
 網站底部「開放資料」使用同一個 Apps Script 網址，提供移除姓名與 Email 後的逐筆資料：

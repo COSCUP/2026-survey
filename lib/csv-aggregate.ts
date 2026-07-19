@@ -1,4 +1,4 @@
-import type { BarDatum, DashboardData, MotivationDatum } from "./dashboard-data";
+import type { BarDatum, DashboardData, MotivationDatum, PersonaDatum } from "./dashboard-data";
 
 type CsvRow = Record<string, string>;
 
@@ -142,6 +142,45 @@ function countSelections(rows: CsvRow[], column: string): BarDatum[] {
   return [...counts.values()].sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "zh-Hant"));
 }
 
+function selectionHasLabel(value: string, label: string): boolean {
+  return splitSelections(value || "").some((raw) => localized(raw).label === label);
+}
+
+function firstSourceSelection(rows: CsvRow[], column: string, label: string): string {
+  for (const row of rows) {
+    const found = splitSelections(row[column] || "").find((raw) => localized(raw).label === label);
+    if (found) return found;
+  }
+  return label;
+}
+
+function buildPersonas(rows: CsvRow[], columns: Record<keyof typeof columnHints, string>) {
+  const build = (item: BarDatum, kind: PersonaDatum["kind"], selectionColumn: string): PersonaDatum => {
+    const cohort = rows.filter((row) => selectionHasLabel(row[selectionColumn] || "", item.label));
+    return {
+      id: `${kind}:${item.label}`,
+      kind,
+      label: item.label,
+      detail: item.detail,
+      sourceLabel: firstSourceSelection(rows, selectionColumn, item.label),
+      value: cohort.length,
+      ageGroups: countSelections(cohort, columns.age),
+      openSourceRoles: countSelections(cohort, columns.roles),
+      entryPaths: countSelections(cohort, columns.entry),
+      operatingSystems: countSelections(cohort, columns.os),
+      licenses: countSelections(cohort, columns.license),
+      workAI: countSelections(cohort, columns.workAI),
+      dailyAI: countSelections(cohort, columns.dailyAI),
+      motivations: countSelections(cohort, columns.motivations),
+      tracks: kind === "role" ? countSelections(cohort, columns.tracks) : [],
+    };
+  };
+  return {
+    roles: countSelections(rows, columns.roles).map((item) => build(item, "role", columns.roles)),
+    tracks: countSelections(rows, columns.tracks).map((item) => build(item, "track", columns.tracks)),
+  };
+}
+
 function splitTop(data: BarDatum[], size: number): [BarDatum[], BarDatum[]] {
   return [data.slice(0, size), data.slice(size)];
 }
@@ -258,6 +297,7 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
     workAI, workAIMore, dailyAI, dailyAIMore,
     aiOutlook: countSelections(rows, columns.outlook),
     tracks, tracksMore,
+    personas: buildPersonas(rows, columns),
     motivations: motivationCounts.map((item, index) => ({ value: item.value, title: item.label, tone: motivationTones[index % motivationTones.length] })),
     newsletters: {
       coscup: { subscribe: coscup.subscribe, eventOnly: coscup.eventOnly, none: coscup.none },

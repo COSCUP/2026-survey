@@ -11,7 +11,7 @@
  * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
-const SCHEMA_VERSION = "2026-07-19-v2";
+const SCHEMA_VERSION = "2026-07-19-v3";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
 // Save each full KKTIX export into the Drive folder. The newest CSV is compared
@@ -27,6 +27,17 @@ const IMPORT_KEY_HINTS = {
   name: ["姓名", "name"],
   email: ["email", "e-mail", "電子郵件"],
   pickup: ["取票時間", "ticket time", "check-in time"],
+};
+
+// KKTIX changed the wording and webhook key of this question during registration.
+// Treat every version as one logical column so an empty renamed column cannot
+// erase answers already stored under the previous title.
+const IMPORT_HEADER_ALIASES = {
+  workAI: [
+    "What kinds of AI do you use at your work? 工作中會使用到哪些 AI？",
+    "What kinds of AI do you use at work? 工作中會使用到的AI？",
+    "field_checkbox_1005616",
+  ],
 };
 
 const PUBLIC_EXCLUDED_HEADER_KEYWORDS = [
@@ -220,8 +231,12 @@ function importLatestKktixCsv_() {
   assertKktixImportHeaders_(values[0]);
   const width = Math.max(...values.map((row) => row.length));
   const normalizedValues = values.map((row) => row.concat(Array(width - row.length).fill("")));
-  const incomingHeaders = normalizedValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
-  const incomingRows = normalizedValues.slice(1).filter((row) => row.some((cell) => String(cell).trim() !== ""));
+  const rawIncomingHeaders = normalizedValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
+  const rawIncomingRows = normalizedValues.slice(1).filter((row) => row.some((cell) => String(cell).trim() !== ""));
+  const collapsedSchema = collapseAliasedIncomingSchema_(rawIncomingHeaders, rawIncomingRows);
+  const incomingHeaders = collapsedSchema.headers;
+  const incomingRows = collapsedSchema.rows;
+  const importWidth = incomingHeaders.length;
 
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
@@ -230,28 +245,28 @@ function importLatestKktixCsv_() {
   if (sheet.getLastRow() > 0 && sheet.getLastColumn() > 0) {
     const existingValues = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getDisplayValues();
     const existingHeaders = existingValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
-    assertMatchingImportHeaders_(existingHeaders, incomingHeaders);
+    const alignedIncomingRows = alignIncomingRows_(existingHeaders, incomingHeaders, incomingRows);
     const existingEntries = existingValues.slice(1)
       .map((row, index) => ({ row, sheetRow: index + 2 }))
       .filter((entry) => entry.row.some((cell) => String(cell).trim() !== ""));
-    changes = planImportChanges_(existingEntries, incomingRows, incomingHeaders);
+    changes = planImportChanges_(existingEntries, alignedIncomingRows, existingHeaders);
     if (changes.updateRows.length && changes.appendRows.length) status = "updated-and-appended";
     else if (changes.updateRows.length) status = "updated";
     else if (changes.appendRows.length) status = "appended";
     else status = "no-changes";
   } else {
-    ensureSheetSize_(sheet, incomingRows.length + 1, width);
-    const initialRange = sheet.getRange(1, 1, incomingRows.length + 1, width);
+    ensureSheetSize_(sheet, incomingRows.length + 1, importWidth);
+    const initialRange = sheet.getRange(1, 1, incomingRows.length + 1, importWidth);
     initialRange.setNumberFormat("@");
     initialRange.setValues([incomingHeaders].concat(incomingRows));
   }
 
-  if (changes.updateRows.length) writeImportUpdates_(sheet, changes.updateRows, width);
+  if (changes.updateRows.length) writeImportUpdates_(sheet, changes.updateRows, importWidth);
 
   if (status === "appended" || status === "updated-and-appended") {
     const startRow = sheet.getLastRow() + 1;
-    ensureSheetSize_(sheet, startRow + changes.appendRows.length - 1, width);
-    const appendRange = sheet.getRange(startRow, 1, changes.appendRows.length, width);
+    ensureSheetSize_(sheet, startRow + changes.appendRows.length - 1, importWidth);
+    const appendRange = sheet.getRange(startRow, 1, changes.appendRows.length, importWidth);
     appendRange.setNumberFormat("@");
     appendRange.setValues(changes.appendRows);
   }
@@ -279,13 +294,81 @@ function ensureSheetSize_(sheet, requiredRows, requiredColumns) {
   }
 }
 
-function assertMatchingImportHeaders_(existingHeaders, incomingHeaders) {
-  const normalize = (header) => String(header).replace(/^\uFEFF/, "").trim().replace(/\s+/g, " ").toLowerCase();
-  const existing = existingHeaders.map(normalize);
-  const incoming = incomingHeaders.map(normalize);
-  if (existing.length !== incoming.length || existing.some((header, index) => header !== incoming[index])) {
-    throw new Error("CSV 與「報名資料」的欄位或順序不同。為避免資料錯位，已停止差異匯入，且未修改既有資料。");
+function alignIncomingRows_(existingHeaders, incomingHeaders, incomingRows) {
+  const existingKeys = existingHeaders.map(canonicalImportHeader_);
+  const incomingGroups = groupHeaderIndexes_(incomingHeaders);
+  const existingUnique = new Set(existingKeys);
+  const incomingUnique = new Set(incomingGroups.keys());
+  if (existingUnique.size !== existingHeaders.length) {
+    throw new Error("「報名資料」含有重複的邏輯欄位，請先合併重複欄位後再匯入。");
   }
+  if (existingUnique.size !== incomingUnique.size || [...existingUnique].some((key) => !incomingUnique.has(key))) {
+    throw new Error("CSV 與「報名資料」的欄位不同。為避免資料錯位，已停止差異匯入，且未修改既有資料。");
+  }
+
+  return incomingRows.map((row) => existingKeys.map((key) => {
+    const indexes = incomingGroups.get(key) || [];
+    if (key === "question:work-ai") return preferredAliasedValue_(incomingHeaders, row, indexes, IMPORT_HEADER_ALIASES.workAI);
+    if (indexes.length !== 1) throw new Error(`CSV 欄位重複，無法安全對應：${key}`);
+    return row[indexes[0]] || "";
+  }));
+}
+
+function collapseAliasedIncomingSchema_(headers, rows) {
+  const groups = groupHeaderIndexes_(headers);
+  const duplicateAliases = groups.get("question:work-ai") || [];
+  if (duplicateAliases.length <= 1) return { headers, rows };
+
+  const preferredIndex = duplicateAliases.slice().sort((left, right) => {
+    const rank = (index) => {
+      const normalized = normalizeImportHeader_(headers[index]);
+      const found = IMPORT_HEADER_ALIASES.workAI.findIndex((alias) => normalized.includes(normalizeImportHeader_(alias)));
+      return found < 0 ? IMPORT_HEADER_ALIASES.workAI.length : found;
+    };
+    return rank(left) - rank(right);
+  })[0];
+  const omitted = new Set(duplicateAliases.filter((index) => index !== preferredIndex));
+  return {
+    headers: headers.filter((_, index) => !omitted.has(index)),
+    rows: rows.map((row) => row
+      .map((cell, index) => index === preferredIndex
+        ? preferredAliasedValue_(headers, row, duplicateAliases, IMPORT_HEADER_ALIASES.workAI)
+        : cell)
+      .filter((_, index) => !omitted.has(index))),
+  };
+}
+
+function canonicalImportHeader_(header) {
+  const normalized = normalizeImportHeader_(header);
+  const isWorkAI = IMPORT_HEADER_ALIASES.workAI.some((alias) => normalized.includes(normalizeImportHeader_(alias)));
+  return isWorkAI ? "question:work-ai" : normalized;
+}
+
+function normalizeImportHeader_(header) {
+  return String(header).replace(/^\uFEFF/, "").trim().replace(/[\s？?]/g, "").toLowerCase();
+}
+
+function groupHeaderIndexes_(headers) {
+  const groups = new Map();
+  headers.forEach((header, index) => {
+    const key = canonicalImportHeader_(header);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(index);
+  });
+  return groups;
+}
+
+function preferredAliasedValue_(headers, row, indexes, aliases) {
+  const ranked = indexes.slice().sort((left, right) => {
+    const rank = (index) => {
+      const normalized = normalizeImportHeader_(headers[index]);
+      const found = aliases.findIndex((alias) => normalized.includes(normalizeImportHeader_(alias)));
+      return found < 0 ? aliases.length : found;
+    };
+    return rank(left) - rank(right);
+  });
+  const populated = ranked.find((index) => String(row[index] || "").trim() !== "");
+  return populated == null ? "" : row[populated];
 }
 
 function planImportChanges_(existingEntries, incomingRows, headers) {
@@ -304,9 +387,20 @@ function planImportChanges_(existingEntries, incomingRows, headers) {
     const candidates = existingByKey.get(key) || [];
     const match = candidates.shift();
     if (!match) appendRows.push(row);
-    else if (!importRowsEqual_(match.row, row)) updateRows.push({ sheetRow: match.sheetRow, values: row });
+    else {
+      const merged = mergeImportRow_(match.row, row);
+      if (!importRowsEqual_(match.row, merged)) updateRows.push({ sheetRow: match.sheetRow, values: merged });
+    }
   });
   return { appendRows, updateRows };
+}
+
+function mergeImportRow_(existingRow, incomingRow) {
+  return incomingRow.map((cell, index) => {
+    const incoming = String(cell || "");
+    const existing = String(existingRow[index] || "");
+    return incoming.trim() === "" && existing.trim() !== "" ? existing : incoming;
+  });
 }
 
 function importRowsEqual_(existingRow, incomingRow) {
@@ -477,6 +571,7 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
   const motivations = countSelections_(rows, columns.motivations).map((item, index) => ({ value: item.value, title: item.label, tone: motivationTones[index % motivationTones.length] }));
   const coscup = countNewsletter_(rows, columns.coscupNewsletter);
   const ocf = countNewsletter_(rows, columns.ocfNewsletter);
+  const personas = buildPersonas_(rows, columns);
 
   return {
     source: {
@@ -501,11 +596,51 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
     licenses: countSelections_(rows, columns.license),
     workAI: workAI[0], workAIMore: workAI[1], dailyAI: dailyAI[0], dailyAIMore: dailyAI[1],
     aiOutlook: countSelections_(rows, columns.outlook), tracks: tracks[0], tracksMore: tracks[1], motivations,
+    personas,
     newsletters: {
       coscup: { subscribe: coscup.subscribe, eventOnly: coscup.eventOnly, none: coscup.none },
       ocf: { subscribe: ocf.subscribe, already: ocf.already, none: ocf.none },
     },
   };
+}
+
+function buildPersonas_(rows, columns) {
+  const build = (item, kind, selectionColumn) => {
+    const cohort = rows.filter((row) => selectionHasLabel_(row[selectionColumn], item.label));
+    return {
+      id: `${kind}:${item.label}`,
+      kind,
+      label: item.label,
+      detail: item.detail || "",
+      sourceLabel: firstSourceSelection_(rows, selectionColumn, item.label),
+      value: cohort.length,
+      ageGroups: countSelections_(cohort, columns.age),
+      openSourceRoles: countSelections_(cohort, columns.roles),
+      entryPaths: countSelections_(cohort, columns.entry),
+      operatingSystems: countSelections_(cohort, columns.os),
+      licenses: countSelections_(cohort, columns.license),
+      workAI: countSelections_(cohort, columns.workAI),
+      dailyAI: countSelections_(cohort, columns.dailyAI),
+      motivations: countSelections_(cohort, columns.motivations),
+      tracks: kind === "role" ? countSelections_(cohort, columns.tracks) : [],
+    };
+  };
+  return {
+    roles: countSelections_(rows, columns.roles).map((item) => build(item, "role", columns.roles)),
+    tracks: countSelections_(rows, columns.tracks).map((item) => build(item, "track", columns.tracks)),
+  };
+}
+
+function selectionHasLabel_(value, label) {
+  return splitSelections_(String(value || "")).some((raw) => localized_(raw).label === label);
+}
+
+function firstSourceSelection_(rows, column, label) {
+  for (const row of rows) {
+    const found = splitSelections_(String(row[column] || "")).find((raw) => localized_(raw).label === label);
+    if (found) return found;
+  }
+  return label;
 }
 
 function countFirstHeard_(rows, column, eventName) {

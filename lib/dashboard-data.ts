@@ -10,6 +10,24 @@ export type MotivationDatum = {
   tone: "coral" | "blue" | "yellow" | "green" | "pink" | "cyan";
 };
 
+export type PersonaDatum = {
+  id: string;
+  kind: "role" | "track";
+  label: string;
+  detail?: string;
+  sourceLabel?: string;
+  value: number;
+  ageGroups: BarDatum[];
+  openSourceRoles: BarDatum[];
+  entryPaths: BarDatum[];
+  operatingSystems: BarDatum[];
+  licenses: BarDatum[];
+  workAI: BarDatum[];
+  dailyAI: BarDatum[];
+  motivations: BarDatum[];
+  tracks: BarDatum[];
+};
+
 export type DashboardData = {
   source: {
     name: string;
@@ -44,6 +62,10 @@ export type DashboardData = {
   aiOutlook: BarDatum[];
   tracks: BarDatum[];
   tracksMore: BarDatum[];
+  personas?: {
+    roles: PersonaDatum[];
+    tracks: PersonaDatum[];
+  };
   motivations: MotivationDatum[];
   newsletters: {
     coscup: { subscribe: number; eventOnly: number; none: number };

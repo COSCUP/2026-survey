@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { aggregateCsv } from "../lib/csv-aggregate";
-import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData } from "../lib/dashboard-data";
+import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData, type PersonaDatum } from "../lib/dashboard-data";
 import {
   copies,
   initialLocale,
@@ -15,6 +15,46 @@ type DataSourceConfig = {
   url?: string;
   format?: "auto" | "json" | "csv";
 };
+
+type TrackDirectoryItem = {
+  id: number;
+  names: string[];
+  url: string;
+};
+
+type SessionApiItem = {
+  track?: {
+    id?: number;
+    name?: { en?: string; "zh-hant"?: string };
+  };
+};
+
+function personaHref(id: string, locale: Locale) {
+  const params = new URLSearchParams({ persona: id, lang: locale });
+  return `${import.meta.env.BASE_URL}?${params.toString()}`;
+}
+
+function overviewHref(locale: Locale, anchor: "community" | "agenda" = "community") {
+  return `${import.meta.env.BASE_URL}?lang=${encodeURIComponent(locale)}#${anchor}`;
+}
+
+function normalizeTrackName(value: string) {
+  return value.toLowerCase().replace(/[×✕]/g, "x").replace(/[^a-z0-9\u3400-\u9fff]/g, "");
+}
+
+function resolveTrackUrl(persona: PersonaDatum, directory: TrackDirectoryItem[]) {
+  const candidates = [persona.sourceLabel, persona.label, persona.detail]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeTrackName)
+    .filter(Boolean);
+  const exact = directory.find((item) => item.names.some((name) => candidates.includes(normalizeTrackName(name))));
+  if (exact) return exact.url;
+  const partial = directory.find((item) => item.names.some((name) => {
+    const normalized = normalizeTrackName(name);
+    return candidates.some((candidate) => candidate.length >= 4 && (candidate.includes(normalized) || normalized.includes(candidate)));
+  }));
+  return partial?.url || "https://coscup.org/2026/session/";
+}
 
 function BarList({
   data,
@@ -103,9 +143,9 @@ function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] })
   );
 }
 
-function Brand({ copy }: { copy: Copy }) {
+function Brand({ copy, href = "#top" }: { copy: Copy; href?: string }) {
   return (
-    <a className="wordmark" href="#top" aria-label={copy.home}>
+    <a className="wordmark" href={href} aria-label={copy.home}>
       <img
         className="site-logo"
         src="https://coscup.org/2026/_ipx/w_640&f_webp/coscup_logo.png"
@@ -170,11 +210,139 @@ function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy
   );
 }
 
+function PersonaBreakdownCard({
+  title,
+  data,
+  color,
+  copy,
+}: {
+  title: string;
+  data: BarDatum[];
+  color: "blue" | "coral" | "green" | "pink" | "yellow";
+  copy: Copy;
+}) {
+  if (!data.length) return null;
+  const visible = data.slice(0, 6);
+  const rest = data.slice(6);
+  return (
+    <article className={`chart-card persona-chart persona-chart--${color}`}>
+      <div className="card-heading">
+        <div>
+          <p className="card-kicker">PERSONA BREAKDOWN</p>
+          <h3>{title}</h3>
+        </div>
+      </div>
+      <BarList data={visible} color={color} />
+      <ExpandableNumbers
+        label={interpolate(copy.common.expandMore, { count: rest.length, unit: copy.persona.expandUnit })}
+        data={rest}
+      />
+    </article>
+  );
+}
+
+function PersonaPage({
+  locale,
+  copy,
+  persona,
+  allPersonas,
+  updatedAt,
+  trackUrl,
+  onLocaleChange,
+}: {
+  locale: Locale;
+  copy: Copy;
+  persona: PersonaDatum | null;
+  allPersonas: PersonaDatum[];
+  updatedAt: string;
+  trackUrl: string;
+  onLocaleChange: (locale: Locale) => void;
+}) {
+  const backAnchor = persona?.kind === "track" ? "agenda" : "community";
+  return (
+    <main className="persona-page">
+      <header className="site-header">
+        <Brand copy={copy} href={overviewHref(locale, backAnchor)} />
+        <div className="header-actions persona-header-actions">
+          <a className="persona-back-link" href={overviewHref(locale, backAnchor)}>{copy.persona.back}</a>
+          <LanguageSwitcher locale={locale} copy={copy} onChange={onLocaleChange} />
+        </div>
+      </header>
+
+      <section className="persona-hero" id="top">
+        <div className="persona-hero__doodle" aria-hidden="true">✦</div>
+        <div className="persona-hero__inner">
+          <a className="persona-back-link persona-back-link--hero" href={overviewHref(locale, backAnchor)}>{copy.persona.back}</a>
+          <p className="eyebrow">{copy.persona.eyebrow}</p>
+          {persona ? (
+            <>
+              <div className="persona-hero__grid">
+                <div>
+                  <h1>{interpolate(persona.kind === "role" ? copy.persona.roleTitle : copy.persona.trackTitle, { name: persona.label })}</h1>
+                  <p>{copy.persona.description}</p>
+                  {persona.kind === "track" ? (
+                    <a className="persona-schedule-link" href={trackUrl} target="_blank" rel="noreferrer">
+                      {trackUrl.endsWith("/session/") ? copy.persona.scheduleFallback : copy.persona.schedule}
+                    </a>
+                  ) : null}
+                </div>
+                <div className="persona-count-card">
+                  <span>{copy.persona.countLabel}</span>
+                  <strong>{persona.value}</strong>
+                  <small>{copy.persona.countUnit}</small>
+                </div>
+              </div>
+              <div className="persona-freshness">{interpolate(copy.sync.updated, { time: updatedAt })}</div>
+            </>
+          ) : (
+            <div className="persona-unavailable">
+              <h1>{copy.persona.eyebrow}</h1>
+              <p>{copy.persona.unavailable}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {persona ? (
+        <section className="section persona-content">
+          <div className="section-inner">
+            <div className="persona-grid">
+              <PersonaBreakdownCard title={copy.persona.age} data={persona.ageGroups} color="blue" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.roles} data={persona.openSourceRoles} color="yellow" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.entry} data={persona.entryPaths} color="coral" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.os} data={persona.operatingSystems} color="green" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.licenses} data={persona.licenses} color="blue" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.workAI} data={persona.workAI} color="coral" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.dailyAI} data={persona.dailyAI} color="pink" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.motivations} data={persona.motivations} color="yellow" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.tracks} data={persona.tracks} color="green" copy={copy} />
+            </div>
+
+            <details className="persona-switcher">
+              <summary>{copy.persona.switcher}<strong aria-hidden="true">＋</strong></summary>
+              <div className="persona-switcher__links">
+                {allPersonas.map((item) => (
+                  <a className={item.id === persona.id ? "is-active" : ""} href={personaHref(item.id, locale)} key={item.id}>
+                    <span>{item.kind === "role" ? "ROLE" : "TRACK"}</span>
+                    {item.label}<strong>{item.value}</strong>
+                  </a>
+                ))}
+              </div>
+            </details>
+          </div>
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
 export default function Home() {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [data, setData] = useState<DashboardData | null>(null);
   const [syncStatus, setSyncStatus] = useState<"loading" | "noSource" | "success" | "failed">("loading");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
+  const [personaId] = useState(() => new URLSearchParams(window.location.search).get("persona") || "");
+  const [trackDirectory, setTrackDirectory] = useState<TrackDirectoryItem[]>([]);
   const copy = copies[locale];
 
   const loadRemoteData = useCallback(async () => {
@@ -232,6 +400,33 @@ export default function Home() {
   }, [loadRemoteData]);
 
   useEffect(() => {
+    if (!personaId.startsWith("track:")) return;
+    let cancelled = false;
+    const loadTrackDirectory = async () => {
+      try {
+        const response = await fetch("https://coscup.org/2026/api/session", { cache: "no-store" });
+        if (!response.ok) throw new Error(`COSCUP session API ${response.status}`);
+        const payload = await response.json() as Record<string, SessionApiItem[]>;
+        const found = new Map<number, TrackDirectoryItem>();
+        Object.values(payload).flat().forEach((session) => {
+          const track = session.track;
+          if (!track?.id || found.has(track.id)) return;
+          found.set(track.id, {
+            id: track.id,
+            names: [track.name?.["zh-hant"], track.name?.en].filter((name): name is string => Boolean(name)),
+            url: `https://coscup.org/2026/track/${track.id}/`,
+          });
+        });
+        if (!cancelled) setTrackDirectory([...found.values()]);
+      } catch (error) {
+        console.warn("Unable to load COSCUP track links", error);
+      }
+    };
+    void loadTrackDirectory();
+    return () => { cancelled = true; };
+  }, [personaId]);
+
+  useEffect(() => {
     document.documentElement.lang = locale;
     document.title = copy.pageTitle;
     document.querySelector('meta[name="description"]')?.setAttribute("content", copy.pageDescription);
@@ -242,8 +437,36 @@ export default function Home() {
   }, [copy, locale]);
 
   const localizedData = useMemo(() => data ? localizeDashboardData(data, locale) : null, [data, locale]);
+  const allPersonas = useMemo(() => localizedData?.personas
+    ? [...localizedData.personas.roles, ...localizedData.personas.tracks]
+    : [], [localizedData]);
+  const selectedPersona = allPersonas.find((persona) => persona.id === personaId) || null;
+  const selectedTrackUrl = selectedPersona?.kind === "track"
+    ? resolveTrackUrl(selectedPersona, trackDirectory)
+    : "https://coscup.org/2026/session/";
+
+  useEffect(() => {
+    if (!personaId) return;
+    document.title = selectedPersona
+      ? `${selectedPersona.label} Persona｜COSCUP 2026`
+      : `Persona｜COSCUP 2026`;
+  }, [personaId, selectedPersona]);
 
   if (!data || !localizedData) return <InitialLoading locale={locale} copy={copy} onLocaleChange={setLocale} />;
+
+  if (personaId) {
+    return (
+      <PersonaPage
+        locale={locale}
+        copy={copy}
+        persona={selectedPersona}
+        allPersonas={allPersonas}
+        updatedAt={data.source.updatedAt}
+        trackUrl={selectedTrackUrl}
+        onLocaleChange={setLocale}
+      />
+    );
+  }
 
   const {
     ageGroups,
@@ -266,6 +489,8 @@ export default function Home() {
     ubuconFirstHeard,
   } = localizedData;
   const { summary, newsletters, aiOutlook } = localizedData;
+  const personaRoles = localizedData.personas?.roles ?? [];
+  const personaTracks = localizedData.personas?.tracks ?? [];
   const percentage = (value: number, total: number) => `${total ? (value / total) * 100 : 0}%`;
   const endpoint = (format: "json" | "csv") => {
     if (!dataSourceUrl) return "";
@@ -422,6 +647,11 @@ export default function Home() {
                     <div>
                       <small>{role.detail}</small>
                       <h4>{role.label}</h4>
+                      {personaRoles[index] ? (
+                        <a className="persona-inline-link" href={personaHref(personaRoles[index].id, locale)}>
+                          {copy.persona.exploreRole}
+                        </a>
+                      ) : null}
                     </div>
                     <strong>{role.value}</strong>
                   </div>
@@ -584,6 +814,18 @@ export default function Home() {
               </div>
               <BarList data={tracks} color="pink" />
               <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: tracksMore.length, unit: copy.agenda.trackUnit })} data={tracksMore} />
+              {personaTracks.length ? (
+                <details className="track-persona-browser">
+                  <summary>{copy.persona.exploreTrack}<strong aria-hidden="true">＋</strong></summary>
+                  <div className="track-persona-links">
+                    {personaTracks.map((persona) => (
+                      <a href={personaHref(persona.id, locale)} key={persona.id}>
+                        <span>{persona.label}</span><strong>{persona.value}</strong>
+                      </a>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
               <p className="card-note">{copy.common.multiSelect}</p>
             </article>
 
