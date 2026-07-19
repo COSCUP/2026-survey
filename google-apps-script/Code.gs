@@ -15,7 +15,7 @@ const SCHEMA_VERSION = "2026-07-19-v2";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
 // Save each full KKTIX export into the Drive folder. The newest CSV is compared
-// with SHEET_NAME and only registrations not already present are appended.
+// with SHEET_NAME: matched registrations are updated and new ones are appended.
 const TARGET_SPREADSHEET_ID = "PASTE_GOOGLE_SHEET_ID_HERE";
 const KKTIX_IMPORT_FOLDER_ID = "PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE";
 const IMPORT_HANDLER = "importLatestKktixCsv";
@@ -225,15 +225,20 @@ function importLatestKktixCsv_() {
 
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
-  let newRows = incomingRows;
+  let changes = { appendRows: incomingRows, updateRows: [] };
   let status = "initialized";
   if (sheet.getLastRow() > 0 && sheet.getLastColumn() > 0) {
     const existingValues = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getDisplayValues();
     const existingHeaders = existingValues[0].map((header) => String(header).replace(/^\uFEFF/, "").trim());
     assertMatchingImportHeaders_(existingHeaders, incomingHeaders);
-    const existingRows = existingValues.slice(1).filter((row) => row.some((cell) => String(cell).trim() !== ""));
-    newRows = selectNewImportRows_(existingRows, incomingRows, incomingHeaders);
-    status = newRows.length ? "appended" : "no-new-rows";
+    const existingEntries = existingValues.slice(1)
+      .map((row, index) => ({ row, sheetRow: index + 2 }))
+      .filter((entry) => entry.row.some((cell) => String(cell).trim() !== ""));
+    changes = planImportChanges_(existingEntries, incomingRows, incomingHeaders);
+    if (changes.updateRows.length && changes.appendRows.length) status = "updated-and-appended";
+    else if (changes.updateRows.length) status = "updated";
+    else if (changes.appendRows.length) status = "appended";
+    else status = "no-changes";
   } else {
     ensureSheetSize_(sheet, incomingRows.length + 1, width);
     const initialRange = sheet.getRange(1, 1, incomingRows.length + 1, width);
@@ -241,12 +246,14 @@ function importLatestKktixCsv_() {
     initialRange.setValues([incomingHeaders].concat(incomingRows));
   }
 
-  if (status === "appended") {
+  if (changes.updateRows.length) writeImportUpdates_(sheet, changes.updateRows, width);
+
+  if (status === "appended" || status === "updated-and-appended") {
     const startRow = sheet.getLastRow() + 1;
-    ensureSheetSize_(sheet, startRow + newRows.length - 1, width);
-    const appendRange = sheet.getRange(startRow, 1, newRows.length, width);
+    ensureSheetSize_(sheet, startRow + changes.appendRows.length - 1, width);
+    const appendRange = sheet.getRange(startRow, 1, changes.appendRows.length, width);
     appendRange.setNumberFormat("@");
-    appendRange.setValues(newRows);
+    appendRange.setValues(changes.appendRows);
   }
   sheet.setFrozenRows(1);
   SpreadsheetApp.flush();
@@ -257,7 +264,8 @@ function importLatestKktixCsv_() {
     status,
     fileName: latestFile.getName(),
     sourceRows: incomingRows.length,
-    appendedRows: status === "initialized" ? incomingRows.length : newRows.length,
+    appendedRows: status === "initialized" ? incomingRows.length : changes.appendRows.length,
+    updatedRows: changes.updateRows.length,
     totalRows: sheet.getLastRow() - 1,
   };
 }
@@ -280,22 +288,41 @@ function assertMatchingImportHeaders_(existingHeaders, incomingHeaders) {
   }
 }
 
-function selectNewImportRows_(existingRows, incomingRows, headers) {
+function planImportChanges_(existingEntries, incomingRows, headers) {
   const keyConfig = buildImportKeyConfig_(headers);
-  const remainingExisting = new Map();
-  existingRows.forEach((row) => {
-    const key = importRowKey_(row, keyConfig);
-    remainingExisting.set(key, (remainingExisting.get(key) || 0) + 1);
+  const existingByKey = new Map();
+  existingEntries.forEach((entry) => {
+    const key = importRowKey_(entry.row, keyConfig);
+    if (!existingByKey.has(key)) existingByKey.set(key, []);
+    existingByKey.get(key).push(entry);
   });
 
-  const newRows = [];
+  const appendRows = [];
+  const updateRows = [];
   incomingRows.forEach((row) => {
     const key = importRowKey_(row, keyConfig);
-    const remaining = remainingExisting.get(key) || 0;
-    if (remaining > 0) remainingExisting.set(key, remaining - 1);
-    else newRows.push(row);
+    const candidates = existingByKey.get(key) || [];
+    const match = candidates.shift();
+    if (!match) appendRows.push(row);
+    else if (!importRowsEqual_(match.row, row)) updateRows.push({ sheetRow: match.sheetRow, values: row });
   });
-  return newRows;
+  return { appendRows, updateRows };
+}
+
+function importRowsEqual_(existingRow, incomingRow) {
+  if (existingRow.length !== incomingRow.length) return false;
+  return existingRow.every((cell, index) => String(cell || "") === String(incomingRow[index] || ""));
+}
+
+function writeImportUpdates_(sheet, updates, width) {
+  const ordered = updates.slice().sort((a, b) => a.sheetRow - b.sheetRow);
+  const groups = [];
+  ordered.forEach((update) => {
+    const group = groups[groups.length - 1];
+    if (group && update.sheetRow === group.startRow + group.rows.length) group.rows.push(update.values);
+    else groups.push({ startRow: update.sheetRow, rows: [update.values] });
+  });
+  groups.forEach((group) => sheet.getRange(group.startRow, 1, group.rows.length, width).setValues(group.rows));
 }
 
 function buildImportKeyConfig_(headers) {
