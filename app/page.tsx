@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { aggregateCsv } from "../lib/csv-aggregate";
 import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData, type PersonaDatum } from "../lib/dashboard-data";
+import { buildPersonaComparison, type PersonaComparisonDatum } from "../lib/persona-comparison";
 import {
   copies,
   initialLocale,
@@ -210,20 +211,118 @@ function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy
   );
 }
 
-function PersonaBreakdownCard({
-  title,
+type PersonaChartColor = "blue" | "coral" | "green" | "pink" | "yellow";
+
+function comparisonBarWidth(rate: number) {
+  if (rate <= 0) return "0%";
+  return `${Math.max(Math.min(rate * 100, 100), 1.5)}%`;
+}
+
+function comparisonRank(copy: Copy, item: PersonaComparisonDatum) {
+  if (item.populationRank == null || item.rankDelta == null) return null;
+  const direction = item.rankDelta > 0 ? "up" : item.rankDelta < 0 ? "down" : "same";
+  const symbol = direction === "up" ? "↑" : direction === "down" ? "↓" : "＝";
+  const change = direction === "up"
+    ? interpolate(copy.persona.rankUp, { count: item.rankDelta })
+    : direction === "down"
+      ? interpolate(copy.persona.rankDown, { count: Math.abs(item.rankDelta) })
+      : copy.persona.rankSame;
+  const path = interpolate(copy.persona.rankPath, { from: item.populationRank, to: item.cohortRank });
+  return { direction, symbol, change, path };
+}
+
+function PersonaComparisonRows({
   data,
   color,
   copy,
+  locale,
+}: {
+  data: PersonaComparisonDatum[];
+  color: PersonaChartColor;
+  copy: Copy;
+  locale: Locale;
+}) {
+  const formatter = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
+  return (
+    <div className="persona-comparison-list">
+      {data.map((item) => {
+        const cohortRate = formatter.format(item.cohortRate);
+        const populationRate = formatter.format(item.populationRate);
+        const rank = comparisonRank(copy, item);
+        const ariaLabel = interpolate(copy.persona.comparisonAria, {
+          label: item.label,
+          cohortValue: item.cohortValue,
+          cohortRate,
+          populationValue: item.populationValue,
+          populationRate,
+          rank: rank ? `${rank.path}，${rank.change}` : "",
+        });
+        return (
+          <div className="persona-comparison-row" key={item.label} aria-label={ariaLabel}>
+            <div className="persona-comparison-row__heading">
+              <div className="bar-label">
+                <span>{item.label}</span>
+                {item.detail ? <small>{item.detail}</small> : null}
+              </div>
+              {rank ? (
+                <div className={`rank-shift rank-shift--${rank.direction}`} title={`${rank.path}；${rank.change}`}>
+                  <small>{rank.path}</small>
+                  <strong><span aria-hidden="true">{rank.symbol}</span>{rank.direction === "same" ? null : Math.abs(item.rankDelta || 0)}</strong>
+                </div>
+              ) : null}
+            </div>
+            <div className="persona-comparison-series">
+              <div className="persona-comparison-line persona-comparison-line--cohort">
+                <span>{copy.persona.cohortShort}</span>
+                <div className="persona-comparison-track" aria-hidden="true">
+                  <i
+                    className={`persona-comparison-fill persona-comparison-fill--${color}`}
+                    style={{ "--comparison-width": comparisonBarWidth(item.cohortRate) } as CSSProperties}
+                  />
+                </div>
+                <strong>{item.cohortValue}<small>{cohortRate}</small></strong>
+              </div>
+              <div className="persona-comparison-line persona-comparison-line--population">
+                <span>{copy.persona.populationShort}</span>
+                <div className="persona-comparison-track" aria-hidden="true">
+                  <i
+                    className="persona-comparison-fill persona-comparison-fill--population"
+                    style={{ "--comparison-width": comparisonBarWidth(item.populationRate) } as CSSProperties}
+                  />
+                </div>
+                <strong>{item.populationValue}<small>{populationRate}</small></strong>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PersonaBreakdownCard({
+  title,
+  data,
+  populationData,
+  cohortTotal,
+  populationTotal,
+  color,
+  copy,
+  locale,
 }: {
   title: string;
   data: BarDatum[];
-  color: "blue" | "coral" | "green" | "pink" | "yellow";
+  populationData: BarDatum[];
+  cohortTotal: number;
+  populationTotal: number;
+  color: PersonaChartColor;
   copy: Copy;
+  locale: Locale;
 }) {
   if (!data.length) return null;
-  const visible = data.slice(0, 6);
-  const rest = data.slice(6);
+  const comparisons = buildPersonaComparison(data, populationData, cohortTotal, populationTotal);
+  const visible = comparisons.slice(0, 6);
+  const rest = comparisons.slice(6);
   return (
     <article className={`chart-card persona-chart persona-chart--${color}`}>
       <div className="card-heading">
@@ -232,11 +331,21 @@ function PersonaBreakdownCard({
           <h3>{title}</h3>
         </div>
       </div>
-      <BarList data={visible} color={color} />
-      <ExpandableNumbers
-        label={interpolate(copy.common.expandMore, { count: rest.length, unit: copy.persona.expandUnit })}
-        data={rest}
-      />
+      <div className="persona-comparison-legend" aria-label={copy.persona.comparisonNote}>
+        <span><i className={`persona-legend-line persona-legend-line--cohort persona-legend-line--${color}`} />{copy.persona.cohortLegend}</span>
+        <span><i className="persona-legend-line persona-legend-line--population" />{copy.persona.populationLegend}</span>
+      </div>
+      <p className="persona-comparison-note">{copy.persona.comparisonNote}</p>
+      <PersonaComparisonRows data={visible} color={color} copy={copy} locale={locale} />
+      {rest.length ? (
+        <details className="data-expander persona-comparison-expander">
+          <summary>
+            <span>{interpolate(copy.common.expandMore, { count: rest.length, unit: copy.persona.expandUnit })}</span>
+            <strong aria-hidden="true">＋</strong>
+          </summary>
+          <PersonaComparisonRows data={rest} color={color} copy={copy} locale={locale} />
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -245,6 +354,7 @@ function PersonaPage({
   locale,
   copy,
   persona,
+  population,
   allPersonas,
   updatedAt,
   trackUrl,
@@ -253,12 +363,15 @@ function PersonaPage({
   locale: Locale;
   copy: Copy;
   persona: PersonaDatum | null;
+  population: DashboardData;
   allPersonas: PersonaDatum[];
   updatedAt: string;
   trackUrl: string;
   onLocaleChange: (locale: Locale) => void;
 }) {
   const backAnchor = persona?.kind === "track" ? "agenda" : "community";
+  const populationTotal = population.summary.totalRegistrations;
+  const populationMotivations = population.motivations.map((item) => ({ label: item.title, value: item.value }));
   return (
     <main className="persona-page">
       <header className="site-header">
@@ -307,15 +420,15 @@ function PersonaPage({
         <section className="section persona-content">
           <div className="section-inner">
             <div className="persona-grid">
-              <PersonaBreakdownCard title={copy.persona.age} data={persona.ageGroups} color="blue" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.roles} data={persona.openSourceRoles} color="yellow" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.entry} data={persona.entryPaths} color="coral" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.os} data={persona.operatingSystems} color="green" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.licenses} data={persona.licenses} color="blue" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.workAI} data={persona.workAI} color="coral" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.dailyAI} data={persona.dailyAI} color="pink" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.motivations} data={persona.motivations} color="yellow" copy={copy} />
-              <PersonaBreakdownCard title={copy.persona.tracks} data={persona.tracks} color="green" copy={copy} />
+              <PersonaBreakdownCard title={copy.persona.age} data={persona.ageGroups} populationData={population.ageGroups} cohortTotal={persona.value} populationTotal={populationTotal} color="blue" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.roles} data={persona.openSourceRoles} populationData={population.openSourceRoles} cohortTotal={persona.value} populationTotal={populationTotal} color="yellow" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.entry} data={persona.entryPaths} populationData={[...population.entryPaths, ...population.entryPathsMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="coral" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.os} data={persona.operatingSystems} populationData={[...population.operatingSystems, ...population.operatingSystemsMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="green" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.licenses} data={persona.licenses} populationData={population.licenses} cohortTotal={persona.value} populationTotal={populationTotal} color="blue" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.workAI} data={persona.workAI} populationData={[...population.workAI, ...population.workAIMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="coral" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.dailyAI} data={persona.dailyAI} populationData={[...population.dailyAI, ...population.dailyAIMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="pink" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.motivations} data={persona.motivations} populationData={populationMotivations} cohortTotal={persona.value} populationTotal={populationTotal} color="yellow" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.tracks} data={persona.tracks} populationData={[...population.tracks, ...population.tracksMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="green" copy={copy} locale={locale} />
             </div>
 
             <details className="persona-switcher">
@@ -460,6 +573,7 @@ export default function Home() {
         locale={locale}
         copy={copy}
         persona={selectedPersona}
+        population={localizedData}
         allPersonas={allPersonas}
         updatedAt={data.source.updatedAt}
         trackUrl={selectedTrackUrl}

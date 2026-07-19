@@ -56,6 +56,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(readme, /更新＋新增、不刪除/);
   assert.match(readme, /view=raw&format=csv/);
   assert.match(page, /PersonaPage/);
+  assert.match(page, /persona-comparison-fill--population/);
+  assert.match(page, /rank-shift--/);
+  assert.match(i18n, /淺色細條為全體報名者/);
   assert.match(page, /https:\/\/coscup\.org\/2026\/api\/session/);
   assert.doesNotMatch(page, /填答率/);
 });
@@ -102,6 +105,47 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.equal(data.personas?.roles.find((persona) => persona.id === "role:使用者")?.value, 1);
   assert.equal(data.personas?.tracks.find((persona) => persona.id === "track:主議程軌")?.value, 1);
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
+});
+
+test("Persona comparisons use cohort rates and competition-rank movement", async () => {
+  const source = await readFile(new URL("lib/persona-comparison.ts", root), "utf8");
+  const javascript = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`;
+  const { buildPersonaComparison } = await import(moduleUrl);
+
+  const comparison = buildPersonaComparison(
+    [
+      { label: "Windows", value: 30 },
+      { label: "macOS", value: 20 },
+      { label: "Linux", value: 20 },
+    ],
+    [
+      { label: "macOS", value: 60 },
+      { label: "Windows", value: 50 },
+      { label: "Linux", value: 40 },
+    ],
+    50,
+    100,
+  );
+
+  assert.deepEqual(comparison[0], {
+    label: "Windows",
+    detail: undefined,
+    cohortValue: 30,
+    populationValue: 50,
+    cohortRate: 0.6,
+    populationRate: 0.5,
+    cohortRank: 1,
+    populationRank: 2,
+    rankDelta: 1,
+  });
+  assert.equal(comparison[1].cohortRank, 2);
+  assert.equal(comparison[1].populationRank, 1);
+  assert.equal(comparison[1].rankDelta, -1);
+  assert.equal(comparison[2].cohortRank, 2);
+  assert.equal(comparison[2].populationRank, 3);
 });
 
 test("public aggregate safety rejects shifted personal-name fields", async () => {

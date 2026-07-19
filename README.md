@@ -87,6 +87,10 @@ Persona 採 query URL，適合 GitHub Pages 直接分享與重新整理，例如
 https://coscup.org/2026-survey/?persona=role%3A%E9%96%8B%E7%99%BC%E8%80%85
 ```
 
+Persona 圖表以粗色條呈現該群體的選擇比例，以淺色細條呈現全體報名者比例；兩者分別以該
+Persona 人數與總報名人數為分母。名次採同分同名次，`↑`／`↓` 顯示相較全體排名的升降，
+避免群體大小不同時直接比較人數造成誤讀。
+
 ## 網站的開放資料介接
 
 網站底部「開放資料」使用同一個 Apps Script 網址，提供移除姓名與 Email 後的逐筆資料：

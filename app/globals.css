@@ -1511,6 +1511,185 @@ main {
 .persona-chart--pink { border-top-color: var(--pink); }
 .persona-chart--yellow { border-top-color: var(--yellow); }
 
+.persona-comparison-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: -4px 0 8px;
+}
+
+.persona-comparison-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #344147;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.persona-legend-line {
+  display: inline-block;
+  width: 30px;
+  flex: 0 0 auto;
+  border-right: 2px solid var(--ink);
+}
+
+.persona-legend-line--cohort { height: 9px; }
+.persona-legend-line--population {
+  height: 4px;
+  border-right: 0;
+  background: #aab9b4;
+}
+
+.persona-legend-line--blue { background: var(--sea); }
+.persona-legend-line--coral { background: var(--coral); }
+.persona-legend-line--green { background: var(--green-dark); }
+.persona-legend-line--pink { background: var(--pink); }
+.persona-legend-line--yellow { background: var(--yellow); }
+
+.persona-comparison-note {
+  margin: 0 0 6px;
+  color: #59666b;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.persona-comparison-list {
+  display: grid;
+}
+
+.persona-comparison-row {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.persona-comparison-row__heading {
+  display: flex;
+  min-height: 34px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.rank-shift {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.rank-shift small {
+  color: #576267;
+  font: 750 9px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.rank-shift strong {
+  display: inline-flex;
+  min-width: 36px;
+  min-height: 27px;
+  padding: 4px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font: 950 13px/1 Arial, sans-serif;
+}
+
+.rank-shift--up strong {
+  background: #d8f1df;
+  color: #0a633b;
+}
+
+.rank-shift--down strong {
+  background: #ffe0d9;
+  color: #a5332c;
+}
+
+.rank-shift--same strong {
+  background: #e7ecea;
+  color: #445157;
+}
+
+.persona-comparison-series {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.persona-comparison-line {
+  display: grid;
+  grid-template-columns: 48px minmax(80px, 1fr) 76px;
+  align-items: center;
+  gap: 9px;
+}
+
+.persona-comparison-line > span {
+  color: #465359;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.persona-comparison-track {
+  height: 11px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #edf1ef;
+}
+
+.persona-comparison-line--population .persona-comparison-track {
+  height: 5px;
+}
+
+.persona-comparison-fill {
+  display: block;
+  width: var(--comparison-width);
+  height: 100%;
+  border-right: 2px solid var(--ink);
+  animation: reveal-bar 780ms ease both;
+  transform-origin: left;
+}
+
+.persona-comparison-fill--blue { background: var(--sea); }
+.persona-comparison-fill--coral { background: var(--coral); }
+.persona-comparison-fill--green { background: var(--green-dark); }
+.persona-comparison-fill--pink { background: var(--pink); }
+.persona-comparison-fill--yellow { background: var(--yellow); }
+.persona-comparison-fill--population {
+  border-right: 0;
+  background: #aab9b4;
+}
+
+.persona-comparison-line > strong {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--ink);
+  font: 950 16px/1 Arial, sans-serif;
+}
+
+.persona-comparison-line > strong small {
+  color: #59666b;
+  font: 750 9px/1 Arial, sans-serif;
+}
+
+.persona-comparison-line--population > strong {
+  color: #68757a;
+  font-size: 13px;
+}
+
+.persona-comparison-expander {
+  margin-top: 4px;
+}
+
+.persona-comparison-expander .persona-comparison-row:last-child {
+  border-bottom: 0;
+}
+
 .persona-switcher {
   margin-top: 34px;
   padding: 0 26px 22px;
@@ -2015,6 +2194,28 @@ footer a {
 
   .persona-count-card {
     min-height: 180px;
+  }
+
+  .persona-comparison-row__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rank-shift {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .persona-comparison-line {
+    grid-template-columns: 43px minmax(70px, 1fr) 65px;
+    gap: 7px;
+  }
+
+  .persona-comparison-line > strong {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .community-role-feature .role-row {
