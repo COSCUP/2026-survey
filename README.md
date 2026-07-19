@@ -36,6 +36,7 @@ const KKTIX_IMPORT_FOLDER_ID = "Google Drive 資料夾網址 /folders/ 後面的
 7. 若已經有 `/exec` 網址，按「部署 → 管理部署 → 編輯 → 新增版本 → 部署」；初次設定才使用「新增部署 → 網路應用程式」：
    - 執行身分：我
    - 具有存取權的使用者：所有人
+   - 此版本會在彙總 JSON 一併輸出到 8/9 為止、每 6 小時一格的累積登錄時間線。
 8. 複製結尾為 `/exec` 的網址，在瀏覽器開啟一次，確認看到彙總 JSON。
 9. 編輯 `public/data-source.json`：
 

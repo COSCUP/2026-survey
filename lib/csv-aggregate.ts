@@ -1,4 +1,4 @@
-import type { BarDatum, DashboardData, MotivationDatum, PersonaDatum } from "./dashboard-data";
+import type { BarDatum, DashboardData, MotivationDatum, PersonaDatum, RegistrationTimelineDatum } from "./dashboard-data";
 
 type CsvRow = Record<string, string>;
 
@@ -225,7 +225,7 @@ function countFirstHeard(rows: CsvRow[], column: string, event: "coscup" | "ubuc
 }
 
 function parsePayment(value: string): Date | null {
-  const match = value.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  const match = value.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
   if (!match) return null;
   const [, year, month, day, hour, minute, second] = match;
   return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
@@ -233,6 +233,39 @@ function parsePayment(value: string): Date | null {
 
 function timeText(date: Date): string {
   return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+function timelineDateText(date: Date): string {
+  const parts = [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()]
+    .map((part, index) => index === 0 ? String(part) : String(part).padStart(2, "0"));
+  return `${parts[0]}-${parts[1]}-${parts[2]} ${parts[3]}:${parts[4]}`;
+}
+
+function timelineBinStart(date: Date): Date {
+  const start = new Date(date);
+  const hour = start.getHours();
+  if (hour < 2) start.setDate(start.getDate() - 1);
+  start.setHours(hour < 2 || hour >= 20 ? 20 : hour < 8 ? 2 : hour < 14 ? 8 : 14, 0, 0, 0);
+  return start;
+}
+
+function buildRegistrationTimeline(payments: Date[]): RegistrationTimelineDatum[] {
+  const horizon = new Date(2026, 7, 10, 0, 0, 0);
+  const bins: RegistrationTimelineDatum[] = [];
+  let cumulative = 0;
+  for (let start = timelineBinStart(payments[0]); start < horizon; start = new Date(start.getTime() + 6 * 60 * 60_000)) {
+    const end = new Date(start.getTime() + 6 * 60 * 60_000);
+    const value = payments.filter((date) => date >= start && date < end).length;
+    cumulative += value;
+    bins.push({
+      startAt: timelineDateText(start),
+      endAt: timelineDateText(end),
+      slot: `${String(start.getHours()).padStart(2, "0")}–${String(end.getHours()).padStart(2, "0")}` as RegistrationTimelineDatum["slot"],
+      value,
+      cumulative,
+    });
+  }
+  return bins;
 }
 
 function updatedAtFromFile(name: string, lastModified?: number): string {
@@ -286,6 +319,7 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
       firstPaymentAt: timeText(first),
       firstMinuteEnd: timeText(new Date(first.getTime() + 60_000)),
       within1Minute: cumulative(1), within5Minutes: cumulative(5), within30Minutes: cumulative(30), within2Hours: cumulative(120),
+      registrationTimeline: buildRegistrationTimeline(payments),
     },
     ageGroups: countSelections(rows, columns.age),
     coscupFirstHeard: countFirstHeard(rows, columns.coscupFirstHeard, "coscup"),

@@ -10,6 +10,14 @@ export type MotivationDatum = {
   tone: "coral" | "blue" | "yellow" | "green" | "pink" | "cyan";
 };
 
+export type RegistrationTimelineDatum = {
+  startAt: string;
+  endAt: string;
+  slot: "02–08" | "08–14" | "14–20" | "20–02";
+  value: number;
+  cumulative: number;
+};
+
 export type PersonaDatum = {
   id: string;
   kind: "role" | "track";
@@ -43,6 +51,7 @@ export type DashboardData = {
     within5Minutes: number;
     within30Minutes: number;
     within2Hours: number;
+    registrationTimeline?: RegistrationTimelineDatum[];
   };
   ageGroups: BarDatum[];
   coscupFirstHeard: BarDatum[];

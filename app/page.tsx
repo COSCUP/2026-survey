@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { aggregateCsv } from "../lib/csv-aggregate";
-import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData, type PersonaDatum } from "../lib/dashboard-data";
+import { defaultDashboardData, isDashboardData, isPublicAggregateSafe, type BarDatum, type DashboardData, type PersonaDatum, type RegistrationTimelineDatum } from "../lib/dashboard-data";
 import { buildPersonaComparison, type PersonaComparisonDatum } from "../lib/persona-comparison";
 import {
   copies,
@@ -141,6 +141,90 @@ function ExpandableNumbers({ label, data }: { label: string; data: BarDatum[] })
         ))}
       </div>
     </details>
+  );
+}
+
+function timelineDateLabel(value: string, locale: Locale) {
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  if (locale === "en") return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "Asia/Taipei" })
+    .format(new Date(Date.UTC(year, month - 1, day)));
+  if (locale === "ja") return `${month}/${day}`;
+  if (locale === "ko") return `${month}/${day}`;
+  return `${month}/${day}`;
+}
+
+function RegistrationTimeline({
+  bins,
+  locale,
+  copy,
+}: {
+  bins: RegistrationTimelineDatum[];
+  locale: Locale;
+  copy: Copy;
+}) {
+  if (!bins.length) return null;
+  const maxAdded = Math.max(1, ...bins.map((item) => item.value));
+  const maxCumulative = Math.max(1, bins.at(-1)?.cumulative || 0);
+  const width = 1200;
+  const height = 270;
+  const left = 28;
+  const right = 34;
+  const baseline = 218;
+  const lineTop = 30;
+  const usableWidth = width - left - right;
+  const xAt = (index: number) => left + (bins.length === 1 ? 0 : (index / (bins.length - 1)) * usableWidth);
+  const yAt = (item: RegistrationTimelineDatum) => baseline - ((item.cumulative / maxCumulative) * (baseline - lineTop));
+  const currentIndex = Math.max(0, bins.reduce((latest, item, index) => item.value > 0 ? index : latest, -1));
+  const activePath = bins.slice(0, currentIndex + 1).map((item, index) => `${index ? "L" : "M"}${xAt(index)} ${yAt(item)}`).join(" ");
+  const futurePath = bins.slice(currentIndex).map((item, index) => `${index ? "L" : "M"}${xAt(currentIndex + index)} ${yAt(item)}`).join(" ");
+  const labelIndexes = [...new Set([0, Math.round((bins.length - 1) * 0.33), Math.round((bins.length - 1) * 0.66), bins.length - 1])];
+  const first = bins[0];
+
+  return (
+    <div className="registration-timeline">
+      <div className="registration-timeline__topline">
+        <div>
+          <p className="registration-timeline__title">{copy.pulse.timelineTitle}</p>
+          <p className="registration-timeline__legend">
+            <span><i className="registration-timeline__legend-bar" />{copy.pulse.timelineAdded}</span>
+            <span><i className="registration-timeline__legend-line" />{copy.pulse.timelineCumulative}</span>
+          </p>
+        </div>
+        <div className="registration-timeline__start">
+          <span>{interpolate(copy.pulse.timelineStart, { time: first.startAt })}</span>
+          <strong>{interpolate(copy.pulse.timelineCurrent, { count: bins.at(-1)?.cumulative || 0 })}</strong>
+        </div>
+      </div>
+
+      <svg className="registration-timeline__chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={copy.pulse.timelineAria}>
+        <line x1={left} x2={width - right} y1={baseline} y2={baseline} className="registration-timeline__axis" />
+        {bins.map((item, index) => {
+          const barWidth = Math.max(3, (usableWidth / bins.length) * 0.68);
+          const barHeight = item.value ? Math.max(4, (item.value / maxAdded) * 52) : 0;
+          return <rect key={item.startAt} x={xAt(index) - barWidth / 2} y={baseline - barHeight} width={barWidth} height={barHeight} className={index > currentIndex ? "registration-timeline__bar is-future" : "registration-timeline__bar"} />;
+        })}
+        {activePath ? <path d={activePath} className="registration-timeline__line" /> : null}
+        {futurePath && currentIndex < bins.length - 1 ? <path d={futurePath} className="registration-timeline__line registration-timeline__line--future" /> : null}
+        {labelIndexes.map((index) => <g key={index}>
+          <line x1={xAt(index)} x2={xAt(index)} y1={baseline} y2={baseline + 7} className="registration-timeline__axis" />
+          <text x={xAt(index)} y={250} textAnchor={index === 0 ? "start" : index === bins.length - 1 ? "end" : "middle"}>{index === bins.length - 1 ? copy.pulse.timelineEnd : timelineDateLabel(bins[index].startAt, locale)}</text>
+        </g>)}
+      </svg>
+
+      <details className="data-expander registration-timeline__expander">
+        <summary>
+          <span>{copy.pulse.timelineNumbers}</span>
+          <strong aria-hidden="true">＋</strong>
+        </summary>
+        <div className="registration-timeline__numbers">
+          {bins.map((item) => <div className="registration-timeline__number" key={item.startAt}>
+            <span>{timelineDateLabel(item.startAt, locale)} · {item.slot}</span>
+            <strong>{interpolate(copy.pulse.timelineAddedValue, { count: item.value })}</strong>
+            <small>{interpolate(copy.pulse.timelineCumulativeValue, { count: item.cumulative })}</small>
+          </div>)}
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -486,6 +570,19 @@ export default function Home() {
         nextData = aggregateCsv(text, config.url.split("/").pop() || "google-sheet.csv");
       }
 
+      // The public raw endpoint is already de-identified. Re-aggregate it in the
+      // browser when available so the six-hour timeline stays current even while
+      // a previously deployed Apps Script is still serving an older schema.
+      try {
+        const rawResponse = await fetch(`${config.url}${separator}view=raw&format=csv&_=${Date.now()}`, { cache: "no-store" });
+        if (rawResponse.ok) {
+          const rawData = aggregateCsv(await rawResponse.text(), config.url.split("/").pop() || "google-sheet.csv");
+          nextData = { ...rawData, source: nextData.source };
+        }
+      } catch (error) {
+        console.warn("Unable to load the de-identified timeline source", error);
+      }
+
       if (!isPublicAggregateSafe(nextData)) throw new Error("公開彙總欄位不符合安全規則");
       setDataSourceUrl(config.url);
       setData(nextData);
@@ -691,39 +788,7 @@ export default function Home() {
             description={copy.pulse.description}
           />
 
-          <div className="pulse-layout">
-            <article className="feature-stat">
-              <span className="feature-stat__spark">✦</span>
-              <p>{summary.firstPaymentAt} → {summary.firstMinuteEnd}</p>
-              <strong>{summary.within1Minute}</strong>
-              <h3>{copy.pulse.firstMinute}</h3>
-              <small>{copy.pulse.heat}</small>
-            </article>
-
-            <div className="timeline-card">
-              <div className="timeline-row">
-                <span>{copy.pulse.minute1}</span>
-                <div><i style={{ "--pulse": "35%" } as CSSProperties} /></div>
-                <strong>{summary.within1Minute}</strong>
-              </div>
-              <div className="timeline-row">
-                <span>{copy.pulse.minute5}</span>
-                <div><i style={{ "--pulse": "43%" } as CSSProperties} /></div>
-                <strong>{summary.within5Minutes}</strong>
-              </div>
-              <div className="timeline-row">
-                <span>{copy.pulse.minute30}</span>
-                <div><i style={{ "--pulse": "70%" } as CSSProperties} /></div>
-                <strong>{summary.within30Minutes}</strong>
-              </div>
-              <div className="timeline-row">
-                <span>{copy.pulse.hour2}</span>
-                <div><i style={{ "--pulse": "100%" } as CSSProperties} /></div>
-                <strong>{summary.within2Hours}</strong>
-              </div>
-              <p className="card-note">{copy.pulse.note}</p>
-            </div>
-          </div>
+          <RegistrationTimeline bins={summary.registrationTimeline ?? []} locale={locale} copy={copy} />
         </div>
       </section>
 

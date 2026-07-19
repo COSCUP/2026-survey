@@ -560,6 +560,154 @@ main {
   gap: 20px;
 }
 
+.registration-timeline {
+  position: relative;
+  padding: clamp(22px, 4vw, 48px);
+  border: 3px solid var(--ink);
+  border-radius: 26px;
+  background: #fffdf5;
+  color: var(--ink);
+}
+
+.registration-timeline__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.registration-timeline__title {
+  margin: 0;
+  font: 950 clamp(24px, 3vw, 40px)/1.1 Arial, sans-serif;
+}
+
+.registration-timeline__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 14px 0 0;
+  color: #34434a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.registration-timeline__legend span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.registration-timeline__legend i {
+  display: inline-block;
+}
+
+.registration-timeline__legend-bar {
+  width: 14px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  background: var(--yellow);
+}
+
+.registration-timeline__legend-line {
+  width: 18px;
+  border-top: 4px solid var(--coral);
+}
+
+.registration-timeline__start {
+  min-width: 185px;
+  padding: 11px 13px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--yellow);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.registration-timeline__start span,
+.registration-timeline__start strong {
+  display: block;
+}
+
+.registration-timeline__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: clamp(20px, 3vw, 32px) 0 8px;
+  overflow: visible;
+}
+
+.registration-timeline__axis {
+  stroke: #5f6b70;
+  stroke-width: 1.5;
+}
+
+.registration-timeline__chart text {
+  fill: #34434a;
+  font: 800 18px Arial, sans-serif;
+}
+
+.registration-timeline__bar {
+  fill: var(--yellow);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.registration-timeline__bar.is-future {
+  fill: #e4e9e6;
+  stroke: #9aa7a3;
+}
+
+.registration-timeline__line {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.registration-timeline__line--future {
+  stroke: #84918e;
+  stroke-dasharray: 12 12;
+}
+
+.registration-timeline__expander {
+  margin-top: 16px;
+  border-top: 2px solid var(--ink);
+}
+
+.registration-timeline__numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 8px;
+  padding: 14px 0 0;
+}
+
+.registration-timeline__number {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  padding: 10px;
+  border: 1px solid #b2bfba;
+  border-radius: 10px;
+  background: #f3f6f3;
+  font-size: 13px;
+}
+
+.registration-timeline__number span {
+  font-weight: 800;
+}
+
+.registration-timeline__number strong {
+  color: #b93f2f;
+}
+
+.registration-timeline__number small {
+  grid-column: 1 / -1;
+  color: #415158;
+  font-weight: 750;
+}
+
 .feature-stat,
 .timeline-card {
   border: 3px solid var(--ink);
@@ -2126,6 +2274,22 @@ footer a {
 
   .hero-shell {
     padding-inline: 0;
+  }
+
+  .registration-timeline {
+    padding: 20px 16px;
+  }
+
+  .registration-timeline__topline {
+    display: grid;
+  }
+
+  .registration-timeline__start {
+    min-width: 0;
+  }
+
+  .registration-timeline__numbers {
+    grid-template-columns: 1fr;
   }
 
   .doodle--loop {

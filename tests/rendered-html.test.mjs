@@ -45,7 +45,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
   assert.match(appsScript, /assertPublicAggregate_/);
-  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v4"/);
+  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v5"/);
   assert.match(appsScript, /function buildPublicRows_/);
   assert.match(appsScript, /function buildPersonas_/);
   assert.match(appsScript, /function importLatestKktixCsv/);
@@ -58,6 +58,8 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /PersonaPage/);
   assert.match(page, /persona-comparison-fill--population/);
   assert.match(page, /rank-shift--/);
+  assert.match(page, /RegistrationTimeline/);
+  assert.match(appsScript, /buildRegistrationTimeline_/);
   assert.match(i18n, /淺色細條為全體登錄者/);
   assert.match(i18n, /Release Early, Release Often/);
   assert.match(page, /https:\/\/coscup\.org\/2026\/api\/session/);
@@ -93,6 +95,12 @@ test("CSV aggregation handles quoted selections and registration timing", async 
 
   assert.equal(data.summary.totalRegistrations, 1);
   assert.equal(data.summary.within1Minute, 1);
+  assert.equal(data.summary.registrationTimeline?.[0].slot, "20–02");
+  assert.equal(data.summary.registrationTimeline?.[0].value, 1);
+  assert.equal(data.summary.registrationTimeline?.at(-1)?.slot, "20–02");
+
+  const oneDigitHour = aggregateCsv(csv.replace("20:00:09", "0:10:56"), "event-preregist-orders-20260718-222734-test.csv");
+  assert.equal(oneDigitHour.summary.registrationTimeline?.[0].value, 1);
   assert.deepEqual(data.ageGroups[0], { label: "55–64 歲", value: 1 });
   assert.deepEqual(data.entryPaths.find((item) => item.label === "新聞、報章雜誌"), { label: "新聞、報章雜誌", value: 1 });
   assert.deepEqual(data.entryPaths.find((item) => item.label === "公文書函"), { label: "公文書函", value: 1 });

@@ -11,7 +11,7 @@
  * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
-const SCHEMA_VERSION = "2026-07-19-v4";
+const SCHEMA_VERSION = "2026-07-19-v5";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
 // Save each full KKTIX export into the Drive folder. The newest CSV is compared
@@ -609,6 +609,7 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
       cancelled: rows.filter((row) => String(row[columns.cancelled]).trim()).length,
       firstPaymentAt: timeText_(first), firstMinuteEnd: timeText_(new Date(first.getTime() + 60000)),
       within1Minute: cumulative(1), within5Minutes: cumulative(5), within30Minutes: cumulative(30), within2Hours: cumulative(120),
+      registrationTimeline: buildRegistrationTimeline_(payments),
     },
     ageGroups: countSelections_(rows, columns.age),
     coscupFirstHeard: countFirstHeard_(rows, columns.coscupFirstHeard, "coscup"),
@@ -744,13 +745,46 @@ function localized_(raw) {
 }
 
 function parsePayment_(value) {
-  const match = String(value).match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  const match = String(value).match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
   if (!match) return null;
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
 }
 
 function timeText_(date) {
   return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+function timelineDateText_(date) {
+  const parts = [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()]
+    .map((part, index) => index === 0 ? String(part) : String(part).padStart(2, "0"));
+  return `${parts[0]}-${parts[1]}-${parts[2]} ${parts[3]}:${parts[4]}`;
+}
+
+function timelineBinStart_(date) {
+  const start = new Date(date);
+  const hour = start.getHours();
+  if (hour < 2) start.setDate(start.getDate() - 1);
+  start.setHours(hour < 2 || hour >= 20 ? 20 : hour < 8 ? 2 : hour < 14 ? 8 : 14, 0, 0, 0);
+  return start;
+}
+
+function buildRegistrationTimeline_(payments) {
+  const horizon = new Date(2026, 7, 10, 0, 0, 0);
+  const bins = [];
+  let cumulative = 0;
+  for (let start = timelineBinStart_(payments[0]); start < horizon; start = new Date(start.getTime() + 6 * 60 * 60 * 1000)) {
+    const end = new Date(start.getTime() + 6 * 60 * 60 * 1000);
+    const value = payments.filter((date) => date >= start && date < end).length;
+    cumulative += value;
+    bins.push({
+      startAt: timelineDateText_(start),
+      endAt: timelineDateText_(end),
+      slot: `${String(start.getHours()).padStart(2, "0")}–${String(end.getHours()).padStart(2, "0")}`,
+      value,
+      cumulative,
+    });
+  }
+  return bins;
 }
 
 function countNewsletter_(rows, column) {
