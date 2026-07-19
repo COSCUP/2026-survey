@@ -177,16 +177,11 @@ function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy
       </header>
 
       <div id="top" className="hero-shell hero-shell--loading">
-        <div className="hero-doodles" aria-hidden="true">
-          <span className="doodle doodle--loop" />
-          <span className="doodle doodle--dash" />
-          <span className="doodle doodle--note">♪</span>
-          <span className="doodle doodle--spark">✦</span>
-        </div>
         <figure className="hero-visual">
           <img
-            src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
+            src={`${import.meta.env.BASE_URL}coscup-2026-transparent-banner.png`}
             alt={copy.imageAlt}
+            fetchPriority="high"
           />
         </figure>
 
@@ -633,16 +628,11 @@ export default function Home() {
       </header>
 
       <div id="top" className="hero-shell">
-        <div className="hero-doodles" aria-hidden="true">
-          <span className="doodle doodle--loop" />
-          <span className="doodle doodle--dash" />
-          <span className="doodle doodle--note">♪</span>
-          <span className="doodle doodle--spark">✦</span>
-        </div>
         <figure className="hero-visual">
           <img
-            src={`${import.meta.env.BASE_URL}coscup-2026-banner.png`}
+            src={`${import.meta.env.BASE_URL}coscup-2026-transparent-banner.png`}
             alt={copy.imageAlt}
+            fetchPriority="high"
           />
         </figure>
 

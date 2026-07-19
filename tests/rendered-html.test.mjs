@@ -58,7 +58,8 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(page, /PersonaPage/);
   assert.match(page, /persona-comparison-fill--population/);
   assert.match(page, /rank-shift--/);
-  assert.match(i18n, /淺色細條為全體報名者/);
+  assert.match(i18n, /淺色細條為全體登錄者/);
+  assert.match(i18n, /Release Early, Release Often/);
   assert.match(page, /https:\/\/coscup\.org\/2026\/api\/session/);
   assert.doesNotMatch(page, /填答率/);
 });

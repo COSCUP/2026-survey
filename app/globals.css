@@ -189,7 +189,7 @@ main {
 
 .hero-shell {
   position: relative;
-  padding: clamp(14px, 2.5vw, 36px) clamp(12px, 2vw, 32px) clamp(38px, 5vw, 72px);
+  padding: clamp(4px, 1vw, 18px) clamp(0px, 1vw, 18px) clamp(38px, 5vw, 72px);
   border-bottom: 3px solid var(--ink);
   background: var(--green);
 }
@@ -272,13 +272,8 @@ main {
 .hero-visual {
   position: relative;
   z-index: 3;
-  max-width: 1600px;
-  margin: 0 auto;
-  overflow: hidden;
-  border: 3px solid var(--ink);
-  border-radius: clamp(20px, 3vw, 36px);
-  background: #21c478;
-  box-shadow: 12px 14px 0 var(--sea-dark);
+  width: min(100%, 1720px);
+  margin: 0 auto clamp(-10px, -0.5vw, -2px);
 }
 
 .hero-visual img {
@@ -2130,13 +2125,7 @@ footer a {
   }
 
   .hero-shell {
-    padding-inline: 16px;
-  }
-
-  .hero-visual {
-    border-width: 2px;
-    border-radius: 18px;
-    box-shadow: 7px 8px 0 var(--sea-dark);
+    padding-inline: 0;
   }
 
   .doodle--loop {
