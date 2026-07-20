@@ -739,21 +739,11 @@ main {
 }
 
 .registration-timeline__point {
-  fill: #fffdf5;
-  stroke: var(--coral);
+  fill: var(--yellow);
+  stroke: var(--ink);
   stroke-width: 4;
   pointer-events: none;
   transition: r 160ms ease, fill 160ms ease, stroke 160ms ease;
-}
-
-.registration-timeline__point.is-future {
-  fill: #fffdf5;
-  stroke: #84918e;
-}
-
-.registration-timeline__point.is-highlighted {
-  fill: var(--yellow);
-  stroke: var(--ink);
 }
 
 .registration-timeline__hit-area {

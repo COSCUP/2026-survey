@@ -185,7 +185,9 @@ function RegistrationTimeline({
   const hitWidth = bins.length === 1 ? usableWidth : usableWidth / (bins.length - 1);
   const tooltipWidth = 244;
   const tooltipX = activeIndex === null ? 0 : Math.min(width - right - tooltipWidth, Math.max(left, xAt(activeIndex) - tooltipWidth / 2));
-  const tooltipY = activeBin === null ? 0 : Math.max(10, yAt(activeBin) - 94);
+  const tooltipY = activeBin === null ? 0 : yAt(activeBin) <= 104
+    ? Math.min(baseline - 88, yAt(activeBin) + 18)
+    : Math.max(10, yAt(activeBin) - 94);
 
   return (
     <div className="registration-timeline">
@@ -208,19 +210,18 @@ function RegistrationTimeline({
         {bins.map((item, index) => {
           const barWidth = Math.max(3, (usableWidth / bins.length) * 0.68);
           const barHeight = item.value ? Math.max(4, (item.value / maxAdded) * 52) : 0;
-          const className = ["registration-timeline__bar", index > currentIndex ? "is-future" : "", activeIndex === index ? "is-highlighted" : ""].filter(Boolean).join(" ");
+          const className = ["registration-timeline__bar", index > currentIndex ? "is-future" : "", activeIndex === index && index <= currentIndex ? "is-highlighted" : ""].filter(Boolean).join(" ");
           return <rect key={item.startAt} x={xAt(index) - barWidth / 2} y={baseline - barHeight} width={barWidth} height={barHeight} className={className} />;
         })}
         {activePath ? <path d={activePath} className="registration-timeline__line" /> : null}
         {futurePath && currentIndex < bins.length - 1 ? <path d={futurePath} className="registration-timeline__line registration-timeline__line--future" /> : null}
-        {bins.map((item, index) => <circle
-          key={`${item.startAt}-point`}
-          cx={xAt(index)}
-          cy={yAt(item)}
-          r={activeIndex === index ? 9 : 5}
-          className={["registration-timeline__point", index > currentIndex ? "is-future" : "", activeIndex === index ? "is-highlighted" : ""].filter(Boolean).join(" ")}
-        />)}
-        {bins.map((item, index) => <rect
+        {activeBin && activeIndex !== null && activeIndex <= currentIndex ? <circle
+          cx={xAt(activeIndex)}
+          cy={yAt(activeBin)}
+          r={9}
+          className="registration-timeline__point"
+        /> : null}
+        {bins.slice(0, currentIndex + 1).map((item, index) => <rect
           key={`${item.startAt}-hit-area`}
           x={xAt(index) - hitWidth / 2}
           y={lineTop - 12}
