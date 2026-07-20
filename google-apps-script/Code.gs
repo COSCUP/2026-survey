@@ -11,7 +11,7 @@
  * Form schema: 2026-07-19 (field keys field_radio_1005509 through field_radio_1005538).
  */
 const SHEET_NAME = "報名資料";
-const SCHEMA_VERSION = "2026-07-19-v5";
+const SCHEMA_VERSION = "2026-07-20-v6";
 
 // KKTIX CSV automation. Fill these two values before installing the trigger.
 // Save each full KKTIX export into the Drive folder. The newest CSV is compared
@@ -57,6 +57,7 @@ const COLUMN_HINTS = {
   age: ["你的年齡", "field_radio_1005509"],
   coscupFirstHeard: ["第一次聽到 COSCUP 是哪一年", "field_text_1005518"],
   ubuconFirstHeard: ["第一次聽到 UbuCon Asia 是哪一年", "field_text_1005519"],
+  profession: ["目前的工作", "current job", "field_checkbox_1005520"],
   entry: ["最開始透過什麼管道接觸開放原始碼", "field_checkbox_1005521"],
   roles: ["開放原始碼運動中扮演什麼角色", "field_checkbox_1005522"],
   os: ["平常使用的作業系統", "field_checkbox_1005523"],
@@ -122,6 +123,24 @@ const LABEL_RULES = [
   ["與他人交流", "交流與認識新朋友"], ["學習開源技術", "學習開源技術"],
   ["國際新知", "獲取國際新知"], ["瞭解開放原始碼", "瞭解開放原始碼"],
   ["開源社群互動", "與開源社群互動"], ["公民科技", "體驗公民科技"],
+];
+
+const PROFESSION_RULES = [
+  ["Student", "學生"], ["Not employed", "目前未就業"], ["Developer, Front-end", "前端工程師"],
+  ["Developer, Back-end", "後端工程師"], ["Developer, Full-stack", "全端工程師"],
+  ["Developer, Mobile", "手機工程師"], ["Developer, Desktop or Enterprise", "桌面／企業應用工程師"],
+  ["Developer, Embedded", "嵌入式應用／裝置工程師"], ["Developer, Game or Graphics", "遊戲／圖像工程師"],
+  ["Developer, QA or test", "QA／測試工程師"], ["Developer, Automation", "自動化工程師"],
+  ["DevOps Engineer", "開發維運工程師"], ["Engineer, Data", "資料工程師"],
+  ["Engineer, Digital Circuit Design", "數位電路設計工程師"], ["Engineer, Site Reliability", "網站可靠性工程師"],
+  ["System Administrator", "系統管理員"], ["Database Administrator", "資料庫管理員"],
+  ["Data Scientist or Machine Learning", "資料科學／機器學習"], ["Data or Business Analyst", "資料／商業分析"],
+  ["Academic Researcher", "學術研究人員"], ["Educator", "教育人員"], ["Training Instructor/Consultant", "培訓講師／顧問"],
+  ["Technician", "技術員"], ["Security Professional", "資安專業人員"], ["IT Support / Help Desk", "資訊支援／IT 維運"],
+  ["Project Management", "專案管理"], ["Engineering Manager", "工程經理"], ["Senior Executive", "高階管理者"],
+  ["Business or Sales Professional", "業務／銷售人員"], ["Marketing-related Professional", "行銷人員"],
+  ["Designer", "設計師"], ["Community Manager / Developer Relations", "社群經營／開發者關係"],
+  ["Open Source Community Organizer", "開源社群組織者"],
 ];
 
 function doGet(event) {
@@ -549,6 +568,7 @@ function toCsv_(data) {
     coscup_first_heard: data.coscupFirstHeard,
     ubucon_first_heard: data.ubuconFirstHeard,
     age_groups: data.ageGroups,
+    professions: data.professions.concat(data.professionsMore),
     open_source_roles: data.openSourceRoles,
     entry_paths: data.entryPaths.concat(data.entryPathsMore),
     operating_systems: data.operatingSystems.concat(data.operatingSystemsMore),
@@ -586,6 +606,7 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
   const cumulative = (minutes) => payments.filter((date) => date.getTime() <= first.getTime() + minutes * 60000).length;
   const split = (items, size) => [items.slice(0, size), items.slice(size)];
   const entry = split(countSelections_(rows, columns.entry), 6);
+  const professions = split(countProfessions_(rows, columns.profession), 8);
   const os = split(countSelections_(rows, columns.os), 6);
   const software = split(countSelections_(rows, columns.software), 6);
   const workAI = split(countSelections_(rows, columns.workAI), 4);
@@ -612,6 +633,7 @@ function aggregateSheet_(values, spreadsheetName, sheetName) {
       registrationTimeline: buildRegistrationTimeline_(payments),
     },
     ageGroups: countSelections_(rows, columns.age),
+    professions: professions[0], professionsMore: professions[1],
     coscupFirstHeard: countFirstHeard_(rows, columns.coscupFirstHeard, "coscup"),
     ubuconFirstHeard: countFirstHeard_(rows, columns.ubuconFirstHeard, "ubucon"),
     openSourceRoles: countSelections_(rows, columns.roles),
@@ -640,6 +662,7 @@ function buildPersonas_(rows, columns) {
       sourceLabel: firstSourceSelection_(rows, selectionColumn, item.label),
       value: cohort.length,
       ageGroups: countSelections_(cohort, columns.age),
+      professions: countProfessions_(cohort, columns.profession),
       openSourceRoles: countSelections_(cohort, columns.roles),
       entryPaths: countSelections_(cohort, columns.entry),
       operatingSystems: countSelections_(cohort, columns.os),
@@ -726,6 +749,19 @@ function countSelections_(rows, column) {
     counts[item.label].value += 1;
   }));
   return Object.values(counts).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+}
+
+function countProfessions_(rows, column) {
+  const counts = {};
+  rows.forEach((row) => {
+    const value = String(row[column] || "").toLowerCase();
+    PROFESSION_RULES.forEach(([needle, label]) => {
+      if (value.includes(needle.toLowerCase())) counts[label] = (counts[label] || 0) + 1;
+    });
+  });
+  return Object.keys(counts)
+    .map((label) => ({ label, value: counts[label] }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
 
 function splitSelections_(value) {

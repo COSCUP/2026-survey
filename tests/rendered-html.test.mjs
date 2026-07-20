@@ -45,7 +45,7 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(appsScript, /coscupFirstHeard/);
   assert.match(appsScript, /ubuconFirstHeard/);
   assert.match(appsScript, /assertPublicAggregate_/);
-  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-19-v5"/);
+  assert.match(appsScript, /SCHEMA_VERSION = "2026-07-20-v6"/);
   assert.match(appsScript, /function buildPublicRows_/);
   assert.match(appsScript, /function buildPersonas_/);
   assert.match(appsScript, /function importLatestKktixCsv/);
@@ -56,6 +56,9 @@ test("GitHub Pages build contains the live data-source workflow", async () => {
   assert.match(readme, /更新＋新增、不刪除/);
   assert.match(readme, /view=raw&format=csv/);
   assert.match(page, /PersonaPage/);
+  assert.match(page, /copy\.persona\.profession/);
+  assert.match(page, /copy\.persona\.openWorkAI/);
+  assert.match(page, /copy\.persona\.openDailyAI/);
   assert.match(page, /persona-comparison-fill--population/);
   assert.match(page, /rank-shift--/);
   assert.match(page, /RegistrationTimeline/);
@@ -116,6 +119,13 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.deepEqual(data.ubuconFirstHeard.find((item) => item.label === "2026 首次聽聞"), { label: "2026 首次聽聞", value: 1 });
   assert.equal(data.newsletters.ocf.already, 1);
   assert.equal(data.personas?.roles.find((persona) => persona.id === "role:使用者")?.value, 1);
+  assert.deepEqual(data.personas?.roles.find((persona) => persona.id === "role:使用者")?.professions, [
+    { label: "後端工程師", value: 1 },
+    { label: "學生", value: 1 },
+  ]);
+  assert.deepEqual(data.personas?.roles.find((persona) => persona.id === "role:使用者")?.workAI, [
+    { label: "其他開源模型", value: 1 },
+  ]);
   assert.equal(data.personas?.tracks.find((persona) => persona.id === "track:主議程軌")?.value, 1);
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
 });
@@ -204,6 +214,11 @@ test("Apps Script supports the latest field keys and option labels", async () =>
   assert.deepEqual(
     structuredClone(vm.runInContext("countSelections_(rows, 2)", context)),
     [{ label: "影音製作與串流軟體", value: 1 }],
+  );
+  context.professionRows = [["Developer, Back-end 工程師/開發者, 後端, Student 學生"]];
+  assert.deepEqual(
+    structuredClone(vm.runInContext("countProfessions_(professionRows, 0)", context)),
+    [{ label: "學生", value: 1 }, { label: "後端工程師", value: 1 }],
   );
 
   context.publicValues = [

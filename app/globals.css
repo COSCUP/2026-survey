@@ -1777,6 +1777,7 @@ main {
 .persona-chart--green { border-top-color: var(--green); }
 .persona-chart--pink { border-top-color: var(--pink); }
 .persona-chart--yellow { border-top-color: var(--yellow); }
+.persona-chart--cyan { border-top-color: #007c8a; }
 
 .persona-comparison-legend {
   display: flex;
@@ -1814,6 +1815,7 @@ main {
 .persona-legend-line--green { background: var(--green-dark); }
 .persona-legend-line--pink { background: var(--pink); }
 .persona-legend-line--yellow { background: var(--yellow); }
+.persona-legend-line--cyan { background: #007c8a; }
 
 .persona-comparison-note {
   margin: 0 0 6px;
@@ -1925,6 +1927,7 @@ main {
 .persona-comparison-fill--green { background: var(--green-dark); }
 .persona-comparison-fill--pink { background: var(--pink); }
 .persona-comparison-fill--yellow { background: var(--yellow); }
+.persona-comparison-fill--cyan { background: #007c8a; }
 .persona-comparison-fill--population {
   border-right: 0;
   background: #aab9b4;

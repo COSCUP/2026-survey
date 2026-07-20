@@ -345,7 +345,7 @@ function InitialLoading({ locale, copy, onLocaleChange }: { locale: Locale; copy
   );
 }
 
-type PersonaChartColor = "blue" | "coral" | "green" | "pink" | "yellow";
+type PersonaChartColor = "blue" | "coral" | "green" | "pink" | "yellow" | "cyan";
 
 function comparisonBarWidth(rate: number) {
   if (rate <= 0) return "0%";
@@ -506,6 +506,10 @@ function PersonaPage({
   const backAnchor = persona?.kind === "track" ? "agenda" : "community";
   const populationTotal = population.summary.totalRegistrations;
   const populationMotivations = population.motivations.map((item) => ({ label: item.title, value: item.value }));
+  const personaOpenWorkAI = persona ? openModelAi(persona.workAI) : [];
+  const personaOpenDailyAI = persona ? openModelAi(persona.dailyAI) : [];
+  const populationOpenWorkAI = openModelAi([...population.workAI, ...population.workAIMore]);
+  const populationOpenDailyAI = openModelAi([...population.dailyAI, ...population.dailyAIMore]);
   return (
     <main className="persona-page">
       <header className="site-header">
@@ -555,12 +559,15 @@ function PersonaPage({
           <div className="section-inner">
             <div className="persona-grid">
               <PersonaBreakdownCard title={copy.persona.age} data={persona.ageGroups} populationData={population.ageGroups} cohortTotal={persona.value} populationTotal={populationTotal} color="blue" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.profession} data={persona.professions || []} populationData={[...population.professions, ...population.professionsMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="cyan" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.roles} data={persona.openSourceRoles} populationData={population.openSourceRoles} cohortTotal={persona.value} populationTotal={populationTotal} color="yellow" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.entry} data={persona.entryPaths} populationData={[...population.entryPaths, ...population.entryPathsMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="coral" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.os} data={persona.operatingSystems} populationData={[...population.operatingSystems, ...population.operatingSystemsMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="green" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.licenses} data={persona.licenses} populationData={population.licenses} cohortTotal={persona.value} populationTotal={populationTotal} color="blue" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.workAI} data={persona.workAI} populationData={[...population.workAI, ...population.workAIMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="coral" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.dailyAI} data={persona.dailyAI} populationData={[...population.dailyAI, ...population.dailyAIMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="pink" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.openWorkAI} data={personaOpenWorkAI} populationData={populationOpenWorkAI} cohortTotal={persona.value} populationTotal={populationTotal} color="green" copy={copy} locale={locale} />
+              <PersonaBreakdownCard title={copy.persona.openDailyAI} data={personaOpenDailyAI} populationData={populationOpenDailyAI} cohortTotal={persona.value} populationTotal={populationTotal} color="pink" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.motivations} data={persona.motivations} populationData={populationMotivations} cohortTotal={persona.value} populationTotal={populationTotal} color="yellow" copy={copy} locale={locale} />
               <PersonaBreakdownCard title={copy.persona.tracks} data={persona.tracks} populationData={[...population.tracks, ...population.tracksMore]} cohortTotal={persona.value} populationTotal={populationTotal} color="green" copy={copy} locale={locale} />
             </div>

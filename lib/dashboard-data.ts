@@ -26,6 +26,7 @@ export type PersonaDatum = {
   sourceLabel?: string;
   value: number;
   ageGroups: BarDatum[];
+  professions: BarDatum[];
   openSourceRoles: BarDatum[];
   entryPaths: BarDatum[];
   operatingSystems: BarDatum[];
