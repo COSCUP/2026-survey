@@ -79,7 +79,7 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   const headers = [
     "付款時間", "取消時間", "Which age group do you belong to? 你的年齡？", "第一次聽到 COSCUP 是哪一年", "第一次聽到 UbuCon Asia 是哪一年",
     "最開始透過什麼管道接觸開放原始碼",
-    "開放原始碼運動中扮演什麼角色", "平常使用的作業系統", "經常使用哪一種開源軟體",
+    "開放原始碼運動中扮演什麼角色", "平常使用的作業系統", "經常使用哪一種開源軟體", "Which of the following best describes your current job? 以下哪項能形容你目前的工作？",
     "授權條款釋出你的作品", "工作中會使用到的AI", "生活中會使用到的AI",
     "AI 會殺死開放原始碼", "COSCUP 大會中得到什麼收穫", "議程軌有興趣", "COSCUP 電子報", "OCF 電子報",
   ];
@@ -87,7 +87,7 @@ test("CSV aggregation handles quoted selections and registration timing", async 
     "2026/07/17 20:00:09", "", "55-64 years old 55-64 歲",
     "2023", "2026",
     "News, Newspapers and magazines 新聞、報章雜誌, Official documants 公文書函", "Users 使用者", "macOS",
-    "Audio, video and streaming software 影音製作與串流軟體（OBS Studio、Kdenlive 等）", "MPL, ISC", "Other open-source 其他開源模型", "Locally hosted or self-hosted AI models 本機執行或自行架設的 AI 模型",
+    "Audio, video and streaming software 影音製作與串流軟體（OBS Studio、Kdenlive 等）", "Developer, Back-end 工程師/開發者, 後端, Student 學生", "MPL, ISC", "Other open-source 其他開源模型", "Locally hosted or self-hosted AI models 本機執行或自行架設的 AI 模型",
     "Complementing each other 兩者相輔相成", "Learn new open source technologies 學習開源技術",
     "主議程軌 - Main Session Track", "願意訂閱 Subscribe", "已經訂閱 Already subscribed",
   ];
@@ -107,6 +107,8 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.deepEqual(data.entryPaths.find((item) => item.label === "新聞、報章雜誌"), { label: "新聞、報章雜誌", value: 1 });
   assert.deepEqual(data.entryPaths.find((item) => item.label === "公文書函"), { label: "公文書函", value: 1 });
   assert.deepEqual(data.openSourceSoftware[0], { label: "影音製作與串流軟體", value: 1 });
+  assert.deepEqual(data.professions.find((item) => item.label === "後端工程師"), { label: "後端工程師", value: 1 });
+  assert.deepEqual(data.professions.find((item) => item.label === "學生"), { label: "學生", value: 1 });
   assert.deepEqual(data.licenses, [{ label: "ISC", value: 1 }, { label: "MPL", value: 1 }]);
   assert.deepEqual(data.workAI[0], { label: "其他開源模型", value: 1 });
   assert.deepEqual(data.dailyAI[0], { label: "本機或自行架設的 AI 模型", value: 1 });

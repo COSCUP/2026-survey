@@ -153,6 +153,18 @@ function timelineDateLabel(value: string, locale: Locale) {
   return `${month}/${day}`;
 }
 
+const openModelAiHints = [
+  "open-source", "open source", "open-weight", "open weight", "open model", "開源模型", "開放權重", "開放模型",
+  "locally hosted", "self-hosted", "本機或自行架設", "llama", "qwen", "deepseek", "mistral", "gemma", "olmo", "falcon", "bloom", "yi ", "glm",
+];
+
+function openModelAi(items: BarDatum[]) {
+  return items.filter((item) => {
+    const searchable = `${item.label} ${item.detail || ""}`.toLowerCase();
+    return openModelAiHints.some((hint) => searchable.includes(hint));
+  });
+}
+
 function RegistrationTimeline({
   bins,
   locale,
@@ -719,6 +731,8 @@ export default function Home() {
 
   const {
     ageGroups,
+    professions,
+    professionsMore,
     openSourceRoles,
     entryPaths,
     entryPathsMore,
@@ -738,6 +752,8 @@ export default function Home() {
     ubuconFirstHeard,
   } = localizedData;
   const { summary, newsletters, aiOutlook } = localizedData;
+  const openWorkAI = openModelAi([...workAI, ...workAIMore]);
+  const openDailyAI = openModelAi([...dailyAI, ...dailyAIMore]);
   const personaRoles = localizedData.personas?.roles ?? [];
   const personaTracks = localizedData.personas?.tracks ?? [];
   const percentage = (value: number, total: number) => `${total ? (value / total) * 100 : 0}%`;
@@ -924,6 +940,19 @@ export default function Home() {
               <BarList data={ageGroups} color="blue" />
             </article>
 
+            <article className="chart-card chart-card--full profession-card">
+              <div className="card-heading">
+                <div>
+                  <p className="card-kicker">{copy.community.professionKicker}</p>
+                  <h3>{copy.community.professionTitle}</h3>
+                </div>
+                <span className="shape-badge shape-badge--pink">WORK</span>
+              </div>
+              <BarList data={professions} color="cyan" />
+              <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: professionsMore.length, unit: copy.community.professionUnit })} data={professionsMore} />
+              <p className="card-note">{copy.community.professionNote}</p>
+            </article>
+
             <article className="chart-card chart-card--full software-card">
               <div className="card-heading">
                 <div>
@@ -1013,6 +1042,30 @@ export default function Home() {
               </div>
               <BarList data={dailyAI} color="blue" />
               <ExpandableNumbers label={interpolate(copy.common.expandMore, { count: dailyAIMore.length, unit: copy.ai.dailyUnit })} data={dailyAIMore} />
+              <p className="card-note">{copy.common.multiSelect}</p>
+            </article>
+
+            <article className="chart-card ai-card ai-card--open-work">
+              <div className="card-heading">
+                <div>
+                  <p className="card-kicker">{copy.ai.openWorkKicker}</p>
+                  <h3>{copy.ai.openWorkTitle}</h3>
+                </div>
+                <span className="context-chip context-chip--green">OPEN</span>
+              </div>
+              <BarList data={openWorkAI} color="green" />
+              <p className="card-note">{copy.common.multiSelect}</p>
+            </article>
+
+            <article className="chart-card ai-card ai-card--open-daily">
+              <div className="card-heading">
+                <div>
+                  <p className="card-kicker">{copy.ai.openDailyKicker}</p>
+                  <h3>{copy.ai.openDailyTitle}</h3>
+                </div>
+                <span className="context-chip context-chip--pink">OPEN</span>
+              </div>
+              <BarList data={openDailyAI} color="pink" />
               <p className="card-note">{copy.common.multiSelect}</p>
             </article>
           </div>

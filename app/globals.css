@@ -1379,6 +1379,14 @@ main {
   border-top: 10px solid var(--sea);
 }
 
+.ai-card--open-work {
+  border-top: 10px solid var(--green);
+}
+
+.ai-card--open-daily {
+  border-top: 10px solid var(--pink);
+}
+
 .context-chip {
   border-radius: 999px;
   background: var(--coral);
@@ -1387,6 +1395,14 @@ main {
 
 .context-chip--blue {
   background: var(--cyan);
+}
+
+.context-chip--green {
+  background: var(--green);
+}
+
+.context-chip--pink {
+  background: var(--pink);
 }
 
 .outlook-panel {

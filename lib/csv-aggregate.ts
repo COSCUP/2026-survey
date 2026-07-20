@@ -8,6 +8,7 @@ const columnHints = {
   age: ["你的年齡", "field_radio_1005509"],
   coscupFirstHeard: ["第一次聽到COSCUP是哪一年", "field_text_1005518"],
   ubuconFirstHeard: ["第一次聽到UbuConAsia是哪一年", "field_text_1005519"],
+  profession: ["目前的工作", "current job", "field_checkbox_1005520"],
   entry: ["最開始透過什麼管道接觸開放原始碼", "field_checkbox_1005521"],
   roles: ["開放原始碼運動中扮演什麼角色", "field_checkbox_1005522"],
   os: ["平常使用的作業系統", "field_checkbox_1005523"],
@@ -80,6 +81,24 @@ const labelRules: Array<[string, string, string?]> = [
 
 const motivationTones: MotivationDatum["tone"][] = ["coral", "blue", "yellow", "green", "pink", "cyan"];
 
+const professionRules: Array<[string, string]> = [
+  ["Student", "學生"], ["Not employed", "目前未就業"], ["Developer, Front-end", "前端工程師"],
+  ["Developer, Back-end", "後端工程師"], ["Developer, Full-stack", "全端工程師"],
+  ["Developer, Mobile", "手機工程師"], ["Developer, Desktop or Enterprise", "桌面／企業應用工程師"],
+  ["Developer, Embedded", "嵌入式應用／裝置工程師"], ["Developer, Game or Graphics", "遊戲／圖像工程師"],
+  ["Developer, QA or test", "QA／測試工程師"], ["Developer, Automation", "自動化工程師"],
+  ["DevOps Engineer", "開發維運工程師"], ["Engineer, Data", "資料工程師"],
+  ["Engineer, Digital Circuit Design", "數位電路設計工程師"], ["Engineer, Site Reliability", "網站可靠性工程師"],
+  ["System Administrator", "系統管理員"], ["Database Administrator", "資料庫管理員"],
+  ["Data Scientist or Machine Learning", "資料科學／機器學習"], ["Data or Business Analyst", "資料／商業分析"],
+  ["Academic Researcher", "學術研究人員"], ["Educator", "教育人員"], ["Training Instructor/Consultant", "培訓講師／顧問"],
+  ["Technician", "技術員"], ["Security Professional", "資安專業人員"], ["IT Support / Help Desk", "資訊支援／IT 維運"],
+  ["Project Management", "專案管理"], ["Engineering Manager", "工程經理"], ["Senior Executive", "高階管理者"],
+  ["Business or Sales Professional", "業務／銷售人員"], ["Marketing-related Professional", "行銷人員"],
+  ["Designer", "設計師"], ["Community Manager / Developer Relations", "社群經營／開發者關係"],
+  ["Open Source Community Organizer", "開源社群組織者"],
+];
+
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -114,6 +133,11 @@ function findColumn(headers: string[], hints: readonly string[]): string {
   return match;
 }
 
+function findOptionalColumn(headers: string[], hints: readonly string[]): string {
+  const normalizedHints = hints.map((hint) => hint.replace(/\s/g, "").toLowerCase());
+  return headers.find((header) => normalizedHints.some((hint) => header.replace(/\s/g, "").toLowerCase().includes(hint))) || "";
+}
+
 function splitSelections(value: string): string[] {
   const protectedValue = value
     .replace(/News,\s*Newspapers and magazines/gi, "News、Newspapers and magazines")
@@ -140,6 +164,19 @@ function countSelections(rows: CsvRow[], column: string): BarDatum[] {
     }
   }
   return [...counts.values()].sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "zh-Hant"));
+}
+
+function countProfessions(rows: CsvRow[], column: string): BarDatum[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const value = row[column] || "";
+    for (const [needle, label] of professionRules) {
+      if (value.toLowerCase().includes(needle.toLowerCase())) counts.set(label, (counts.get(label) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "zh-Hant"));
 }
 
 function selectionHasLabel(value: string, label: string): boolean {
@@ -293,7 +330,7 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
   if (parsed.length < 2) throw new Error("CSV 沒有可用的資料列。");
   const headers = parsed[0].map((cell) => cell.trim());
   const rows = parsed.slice(1).map((cells) => Object.fromEntries(headers.map((header, index) => [header, (cells[index] || "").trim()])));
-  const columns = Object.fromEntries(Object.entries(columnHints).map(([key, hint]) => [key, findColumn(headers, hint)])) as Record<keyof typeof columnHints, string>;
+  const columns = Object.fromEntries(Object.entries(columnHints).map(([key, hint]) => [key, key === "profession" ? findOptionalColumn(headers, hint) : findColumn(headers, hint)])) as Record<keyof typeof columnHints, string>;
 
   const payments = rows.map((row) => parsePayment(row[columns.payment])).filter((date): date is Date => Boolean(date)).sort((a, b) => a.getTime() - b.getTime());
   if (!payments.length) throw new Error("找不到可辨識的付款時間。");
@@ -301,6 +338,7 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
   const cumulative = (minutes: number) => payments.filter((date) => date.getTime() <= first.getTime() + minutes * 60_000).length;
 
   const [entryPaths, entryPathsMore] = splitTop(countSelections(rows, columns.entry), 6);
+  const [professions, professionsMore] = splitTop(countProfessions(rows, columns.profession), 8);
   const [operatingSystems, operatingSystemsMore] = splitTop(countSelections(rows, columns.os), 6);
   const [openSourceSoftware, openSourceSoftwareMore] = splitTop(countSelections(rows, columns.software), 6);
   const [workAI, workAIMore] = splitTop(countSelections(rows, columns.workAI), 4);
@@ -322,6 +360,7 @@ export function aggregateCsv(text: string, sourceName: string, lastModified?: nu
       registrationTimeline: buildRegistrationTimeline(payments),
     },
     ageGroups: countSelections(rows, columns.age),
+    professions, professionsMore,
     coscupFirstHeard: countFirstHeard(rows, columns.coscupFirstHeard, "coscup"),
     ubuconFirstHeard: countFirstHeard(rows, columns.ubuconFirstHeard, "ubucon"),
     openSourceRoles: countSelections(rows, columns.roles),

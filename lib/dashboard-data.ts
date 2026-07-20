@@ -54,6 +54,8 @@ export type DashboardData = {
     registrationTimeline?: RegistrationTimelineDatum[];
   };
   ageGroups: BarDatum[];
+  professions: BarDatum[];
+  professionsMore: BarDatum[];
   coscupFirstHeard: BarDatum[];
   ubuconFirstHeard: BarDatum[];
   openSourceRoles: BarDatum[];
@@ -106,6 +108,13 @@ export const defaultDashboardData: DashboardData = {
     { label: "18 歲以下", value: 4 },
     { label: "不方便告知", value: 2 },
   ],
+  professions: [
+    { label: "學生", value: 19 },
+    { label: "後端工程師", value: 12 },
+    { label: "手機工程師", value: 7 },
+    { label: "嵌入式應用／裝置工程師", value: 7 },
+  ],
+  professionsMore: [],
   coscupFirstHeard: [
     { label: "2006–2012", value: 10 },
     { label: "2013–2017", value: 20 },
