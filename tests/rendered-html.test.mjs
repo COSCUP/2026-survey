@@ -130,6 +130,26 @@ test("CSV aggregation handles quoted selections and registration timing", async 
   assert.equal(data.source.updatedAt, "2026.07.18 22:27");
 });
 
+test("Open-model AI classification includes TAIDE and TwinkleAI", async () => {
+  const source = await readFile(new URL("lib/open-model-ai.ts", root), "utf8");
+  const javascript = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`;
+  const { openModelAi } = await import(moduleUrl);
+
+  assert.deepEqual(openModelAi([
+    { label: "TAIDE", value: 1 },
+    { label: "TwinkleAI", value: 1 },
+    { label: "Twinkle AI", value: 1 },
+    { label: "ChatGPT", value: 9 },
+  ]), [
+    { label: "TAIDE", value: 1 },
+    { label: "TwinkleAI", value: 1 },
+    { label: "Twinkle AI", value: 1 },
+  ]);
+});
+
 test("Persona comparisons use cohort rates and competition-rank movement", async () => {
   const source = await readFile(new URL("lib/persona-comparison.ts", root), "utf8");
   const javascript = ts.transpileModule(source, {
