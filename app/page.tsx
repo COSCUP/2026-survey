@@ -162,6 +162,7 @@ function RegistrationTimeline({
   locale: Locale;
   copy: Copy;
 }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (!bins.length) return null;
   const maxAdded = Math.max(1, ...bins.map((item) => item.value));
   const maxCumulative = Math.max(1, bins.at(-1)?.cumulative || 0);
@@ -180,6 +181,11 @@ function RegistrationTimeline({
   const labelIndexes = [...new Set([0, Math.round((bins.length - 1) * 0.33), Math.round((bins.length - 1) * 0.66), bins.length - 1])];
   const first = bins[0];
   const populatedBins = bins.filter((item) => item.value > 0);
+  const activeBin = activeIndex === null ? null : bins[activeIndex];
+  const hitWidth = bins.length === 1 ? usableWidth : usableWidth / (bins.length - 1);
+  const tooltipWidth = 244;
+  const tooltipX = activeIndex === null ? 0 : Math.min(width - right - tooltipWidth, Math.max(left, xAt(activeIndex) - tooltipWidth / 2));
+  const tooltipY = activeBin === null ? 0 : Math.max(10, yAt(activeBin) - 94);
 
   return (
     <div className="registration-timeline">
@@ -197,15 +203,50 @@ function RegistrationTimeline({
         </div>
       </div>
 
-      <svg className="registration-timeline__chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={copy.pulse.timelineAria}>
+      <svg className="registration-timeline__chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={copy.pulse.timelineAria} onMouseLeave={() => setActiveIndex(null)}>
         <line x1={left} x2={width - right} y1={baseline} y2={baseline} className="registration-timeline__axis" />
         {bins.map((item, index) => {
           const barWidth = Math.max(3, (usableWidth / bins.length) * 0.68);
           const barHeight = item.value ? Math.max(4, (item.value / maxAdded) * 52) : 0;
-          return <rect key={item.startAt} x={xAt(index) - barWidth / 2} y={baseline - barHeight} width={barWidth} height={barHeight} className={index > currentIndex ? "registration-timeline__bar is-future" : "registration-timeline__bar"} />;
+          const className = ["registration-timeline__bar", index > currentIndex ? "is-future" : "", activeIndex === index ? "is-highlighted" : ""].filter(Boolean).join(" ");
+          return <rect key={item.startAt} x={xAt(index) - barWidth / 2} y={baseline - barHeight} width={barWidth} height={barHeight} className={className} />;
         })}
         {activePath ? <path d={activePath} className="registration-timeline__line" /> : null}
         {futurePath && currentIndex < bins.length - 1 ? <path d={futurePath} className="registration-timeline__line registration-timeline__line--future" /> : null}
+        {bins.map((item, index) => <circle
+          key={`${item.startAt}-point`}
+          cx={xAt(index)}
+          cy={yAt(item)}
+          r={activeIndex === index ? 9 : 5}
+          className={["registration-timeline__point", index > currentIndex ? "is-future" : "", activeIndex === index ? "is-highlighted" : ""].filter(Boolean).join(" ")}
+        />)}
+        {bins.map((item, index) => <rect
+          key={`${item.startAt}-hit-area`}
+          x={xAt(index) - hitWidth / 2}
+          y={lineTop - 12}
+          width={hitWidth}
+          height={baseline - lineTop + 24}
+          className="registration-timeline__hit-area"
+          tabIndex={0}
+          role="button"
+          aria-label={`${timelineDateLabel(item.startAt, locale)} ${item.slot}: ${interpolate(copy.pulse.timelineAddedValue, { count: item.value })}; ${interpolate(copy.pulse.timelineCumulativeValue, { count: item.cumulative })}`}
+          onMouseEnter={() => setActiveIndex(index)}
+          onFocus={() => setActiveIndex(index)}
+          onBlur={() => setActiveIndex(null)}
+          onClick={() => setActiveIndex(index)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setActiveIndex(index);
+            }
+          }}
+        />)}
+        {activeBin ? <g className="registration-timeline__tooltip" aria-hidden="true">
+          <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={76} rx={10} />
+          <text x={tooltipX + 13} y={tooltipY + 21} className="registration-timeline__tooltip-time">{timelineDateLabel(activeBin.startAt, locale)} · {activeBin.slot}</text>
+          <text x={tooltipX + 13} y={tooltipY + 44}>{copy.pulse.timelineAdded}：{interpolate(copy.pulse.timelineAddedValue, { count: activeBin.value })}</text>
+          <text x={tooltipX + 13} y={tooltipY + 64}>{copy.pulse.timelineCumulative}：{interpolate(copy.pulse.timelineCumulativeValue, { count: activeBin.cumulative })}</text>
+        </g> : null}
         {labelIndexes.map((index) => <g key={index}>
           <line x1={xAt(index)} x2={xAt(index)} y1={baseline} y2={baseline + 7} className="registration-timeline__axis" />
           <text x={xAt(index)} y={250} textAnchor={index === 0 ? "start" : index === bins.length - 1 ? "end" : "middle"}>{index === bins.length - 1 ? copy.pulse.timelineEnd : timelineDateLabel(bins[index].startAt, locale)}</text>

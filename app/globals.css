@@ -711,11 +711,18 @@ main {
   fill: var(--yellow);
   stroke: var(--ink);
   stroke-width: 1.5;
+  transition: fill 160ms ease, stroke-width 160ms ease;
 }
 
 .registration-timeline__bar.is-future {
   fill: #e4e9e6;
   stroke: #9aa7a3;
+}
+
+.registration-timeline__bar.is-highlighted {
+  fill: var(--green);
+  stroke: var(--ink);
+  stroke-width: 3;
 }
 
 .registration-timeline__line {
@@ -729,6 +736,51 @@ main {
 .registration-timeline__line--future {
   stroke: #84918e;
   stroke-dasharray: 12 12;
+}
+
+.registration-timeline__point {
+  fill: #fffdf5;
+  stroke: var(--coral);
+  stroke-width: 4;
+  pointer-events: none;
+  transition: r 160ms ease, fill 160ms ease, stroke 160ms ease;
+}
+
+.registration-timeline__point.is-future {
+  fill: #fffdf5;
+  stroke: #84918e;
+}
+
+.registration-timeline__point.is-highlighted {
+  fill: var(--yellow);
+  stroke: var(--ink);
+}
+
+.registration-timeline__hit-area {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.registration-timeline__hit-area:focus {
+  outline: none;
+}
+
+.registration-timeline__tooltip {
+  pointer-events: none;
+}
+
+.registration-timeline__tooltip rect {
+  fill: var(--ink);
+}
+
+.registration-timeline__chart .registration-timeline__tooltip text {
+  fill: #fff;
+  font-size: 14px;
+}
+
+.registration-timeline__chart .registration-timeline__tooltip-time {
+  fill: var(--yellow);
+  font-size: 13px;
 }
 
 .registration-timeline__expander {
