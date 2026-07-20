@@ -63,7 +63,7 @@ function BarList({
   compact = false,
 }: {
   data: BarDatum[];
-  color?: "blue" | "coral" | "green" | "pink" | "yellow";
+  color?: "blue" | "coral" | "green" | "pink" | "yellow" | "cyan";
   compact?: boolean;
 }) {
   const max = Math.max(...data.map((item) => item.value));

@@ -1118,6 +1118,12 @@ main {
 .bar-fill--green { background: var(--green); }
 .bar-fill--pink { background: var(--pink); }
 .bar-fill--yellow { background: var(--yellow); }
+.bar-fill--cyan { background: #007c8a; }
+
+.profession-card .bar-label,
+.profession-card .bar-value {
+  color: var(--ink);
+}
 
 .bar-value {
   text-align: right;
